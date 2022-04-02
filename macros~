@@ -1,0 +1,10 @@
+#lang rosette
+
+; int32? is a shorthand for the type (bitvector 32).
+(define int32? (bitvector 32))
+
+; int32 takes as input an integer literal and returns
+; the corresponding 32-bit bitvector value.
+(define (int32 i) (bv i int32?))
+
+(define (myadd r1 r2) (bvsub r1 (bvsub 0 r2)))
