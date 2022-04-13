@@ -95,9 +95,36 @@
       (set! rd (bvadd rd (bvor ex1 ex2))))
      rd))
 
+(define (myor1 r1 r2)
+  (let ([x r1])
+    (define rd (int32 0))
+    (define ex1 r1)
+    (define ex2 r2)
+    (for ([i 32])
+      (set! rd (bvshl rd (int32 1)))
+      (let ([msbex1 (msb ex1)]
+            [msbex2 (msb ex2)])
+      (set! rd (bvadd rd (zero-extend (bvor msbex1 msbex2) (bitvector 32))))
+      (set! ex1 (bvshl ex1 (int32 1)))
+      (set! ex2 (bvshl ex2 (int32 1)))))
+     rd))
+
+;shift r1 left and right by 1, subtract it from the original r1 and return 0 if the result is 0, else 1
+(define (mymsb r1)
+  (if (bveq (bvsub r1 (bvlshr (bvshl r1 (int32 1)) (int32 1))) (int32 0)) (bv 0 1) (bv 1 1))
+  )
+
 (display "MYOR\n")
+;first verify that msb gives the same result as mymsb
+(verify (assert (eq? (msb r1) (mymsb r1))))
 (verify (assert (eq? (bvor r1 r2) (myor r1 r2))))
+(verify (assert (eq? (bvor r1 r2) (myor1 r1 r2))))
 
 ;============== SLT
+(define (myslt r1 r2)
+  (if (bvslt r1 r2) (int32 1) (int32 0)))
+
+(display "MYSLT\n")
+(verify (assert (eq? (bool->bitvector (bvslt r1 r2) 32) (myslt r1 r2))))
 ;============== SLTU
-;============== Branching?
+;============== Branching? JAL?
