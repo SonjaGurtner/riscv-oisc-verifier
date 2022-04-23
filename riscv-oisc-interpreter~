@@ -1,0 +1,60 @@
+#lang rosette
+(require rackunit)
+
+; int32? is a shorthand for the type (bitvector 32).
+(define int32? (bitvector 4))
+
+; int32 takes as input an integer literal and returns the corresponding 32-bit bitvector value.
+(define (int32 i)
+  (bv i int32?))
+
+; define memory
+(struct register ())
+(struct x0 () #:super struct:register)
+(struct x1 () #:super struct:register)
+(struct x2 () #:super struct:register)
+(struct x3 () #:super struct:register)
+(struct x4 () #:super struct:register)
+(struct x5 () #:super struct:register)
+(struct registers (x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31) #:transparent)
+(struct cpu (pc registers stack) #:transparent)
+
+;====================== Auxiliary Instructions - Memory
+(define (modify-stack cpu len)
+  (assume (< len (length (cpu-stack cpu))))
+  cpu)
+
+(define (read-register rd cpu)
+  (match rd
+    [(struct x0 ()) 0]
+    [(struct x1 ()) (registers-x1 (cpu-registers cpu))]))
+
+(verify (eq? (read-register x0 cpu) 0))
+
+;====================== RISC-V Instructions
+;============== I-Type
+(define (lw rd imm cpu)
+  ;(registers-rd (cpu-registers cpu))
+  ;set rd to value from stack at imm(sp)
+  cpu)
+
+;============== S-Type
+
+
+;====================== Replaced Instructions
+;============== R-Type
+(define (myadd rd rs1 rs2 cpu)
+   (bvadd (registers-x2 (cpu-registers cpu)) (int32 -24)) ;sp -24 -> cpu->registers->x2
+   ;store registers and rs1, rs2
+   ;sub
+   ;sub
+   ;restore registers
+   ;sp +24
+   cpu)
+
+;define testprogram e.g. (myadd x10 x7 x3 4 register stack)
+;define stack, registers etc
+;loop that executes program
+;(function which takes program as parameter and returns registers etc? for verification)
+;#########################################
+;#########################################
