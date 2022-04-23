@@ -82,3 +82,4 @@
      (assume (< 31 (length (cpu-registers test-cpu))))
      (assert (eq? (read-register x0 test-cpu) 0))))
 
+(addi x1 x2 (int32 6) test-cpu)
