@@ -74,8 +74,8 @@
 (struct op-srai (rd rs1 imm) #:super struct:instruction)
 (struct op-slti (rd rs1 imm) #:super struct:instruction)
 (struct op-sltiu (rd rs1 imm) #:super struct:instruction)
-(struct op-lw (rd imm rs1 ) #:super struct:instruction)
-(struct op-sw (rs1 imm rs2 ) #:super struct:instruction)
+(struct op-lw (rd imm rs1) #:super struct:instruction)
+(struct op-sw (rs1 imm rs2) #:super struct:instruction)
 ;branching and jumps
 (struct op-lui (rd imm ) #:super struct:instruction)
 ;auipc
