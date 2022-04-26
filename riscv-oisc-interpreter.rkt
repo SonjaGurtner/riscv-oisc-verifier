@@ -8,7 +8,7 @@
   (bv i int32?))
 
 ; Parameter that controls the number of unrollings, for the main execute method (to prevent infinite runs), has to be adjusted
-(define fuel (make-parameter 5))
+(define fuel (make-parameter 30))
 
 (define-syntax-rule
   (define-bounded (id param ...) body ...)
@@ -23,33 +23,33 @@
 (define-values (x2 sp) (values 2 2))
 (define-values (x3 gp) (values 3 3))
 (define-values (x4 tp) (values 4 4))
-(define-values (x5 t0) (values 4 4))
-(define-values (x6 t1) (values 4 4))
-(define-values (x7 t2) (values 4 4))
+(define-values (x5 t0) (values 5 5))
+(define-values (x6 t1) (values 6 6))
+(define-values (x7 t2) (values 7 7))
 (define-values (x8 s0 fp) (values 8 8 8))
-(define-values (x9 s1) (values 4 4))
-(define-values (x10 a0) (values 4 4))
-(define-values (x11 a1) (values 4 4))
-(define-values (x12 a2) (values 4 4))
-(define-values (x13 a3) (values 4 4))
-(define-values (x14 a4) (values 4 4))
-(define-values (x15 a5) (values 4 4))
-(define-values (x16 a6) (values 4 4))
-(define-values (x17 a7) (values 4 4))
-(define-values (x18 s2) (values 4 4))
-(define-values (x19 s3) (values 4 4))
-(define-values (x20 s4) (values 4 4))
-(define-values (x21 s5) (values 4 4))
-(define-values (x22 s6) (values 4 4))
-(define-values (x23 s7) (values 4 4))
-(define-values (x24 s8) (values 4 4))
-(define-values (x25 s9) (values 4 4))
-(define-values (x26 s10) (values 4 4))
-(define-values (x27 s11) (values 4 4))
-(define-values (x28 t3) (values 4 4))
-(define-values (x29 t4) (values 4 4))
-(define-values (x30 t5) (values 4 4))
-(define-values (x31 t6) (values 4 4))
+(define-values (x9 s1) (values 9 9))
+(define-values (x10 a0) (values 10 10))
+(define-values (x11 a1) (values 11 11))
+(define-values (x12 a2) (values 12 12))
+(define-values (x13 a3) (values 13 13))
+(define-values (x14 a4) (values 14 14))
+(define-values (x15 a5) (values 15 15))
+(define-values (x16 a6) (values 16 16))
+(define-values (x17 a7) (values 17 17))
+(define-values (x18 s2) (values 18 18))
+(define-values (x19 s3) (values 19 19))
+(define-values (x20 s4) (values 20 20))
+(define-values (x21 s5) (values 21 21))
+(define-values (x22 s6) (values 22 22))
+(define-values (x23 s7) (values 23 23))
+(define-values (x24 s8) (values 24 24))
+(define-values (x25 s9) (values 25 25))
+(define-values (x26 s10) (values 26 26))
+(define-values (x27 s11) (values 27 27))
+(define-values (x28 t3) (values 28 28))
+(define-values (x29 t4) (values 29 29))
+(define-values (x30 t5) (values 30 30))
+(define-values (x31 t6) (values 31 31))
 
 (struct cpu (pc registers stack) #:transparent)
 (struct instruction ())
@@ -77,10 +77,11 @@
 (struct op-lw (rd imm rs1) #:super struct:instruction)
 (struct op-sw (rs1 imm rs2) #:super struct:instruction)
 ;branching and jumps
-(struct op-lui (rd imm ) #:super struct:instruction)
+(struct op-lui (rd imm) #:super struct:instruction)
 ;auipc
 
 ;Replaced instructions
+(struct op-myaddi (rd rs1 imm) #:super struct:instruction)
 ;myinstructions
 ;jumps and branching
 ;auipc
@@ -103,6 +104,7 @@
 (define (increment-register rd val mem-state)
   (write-register rd (bvadd (read-register rd mem-state) val) mem-state))
 
+;incrementes by 1 to use it as index for the program list, and making it comparable
 (define (increment-pc mem-state)
   (cpu (+ 1 (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
@@ -112,62 +114,62 @@
 ;========================= RISC-V Instructions
 ;============== R-Type
 (define (add rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvadd (read-register rs1 mem-state) (read-register rs2 mem-state)))))
+  (increment-pc (write-register rd (bvadd (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
 (define (sub rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvsub (read-register rs1 mem-state) (read-register rs2 mem-state)))))
+  (increment-pc (write-register rd (bvsub (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
 (define (xor rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) (read-register rs2 mem-state)))))
+  (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state) ))
 
 (define (or rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvor (read-register rs1 mem-state) (read-register rs2 mem-state)))))
+  (increment-pc (write-register rd (bvor (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
 (define (and rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvand (read-register rs1 mem-state) (read-register rs2 mem-state)))))
+  (increment-pc (write-register rd (bvand (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
 (define (sll rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))))))
+  (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))) mem-state)))
 
 (define (srl rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvlshr (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))))))
+  (increment-pc (write-register rd (bvlshr (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))) mem-state)))
 
 (define (sra rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (bvashr (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))))))
+  (increment-pc (write-register rd (bvashr (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (int32 31))) mem-state)))
 
 (define (slt rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state)) (int32 1) (int32 0)))))
+  (increment-pc (write-register rd (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state)) (int32 1) (int32 0)) mem-state)))
 
 (define (sltu rd rs1 rs2 mem-state)
-  (increment-pc (write-register rd (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state)) (int32 1) (int32 0)))))
+  (increment-pc (write-register rd (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state)) (int32 1) (int32 0)) mem-state)))
 
 ;============== I-Type
 (define (addi rd rs1 imm mem-state)
   (increment-pc (write-register rd (bvadd (read-register rs1 mem-state) imm) mem-state)))
 
 (define (xori rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) imm))))
+  (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) imm) mem-state)))
 
 (define (ori rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvor (read-register rs1 mem-state) imm))))
+  (increment-pc (write-register rd (bvor (read-register rs1 mem-state) imm) mem-state)))
 
 (define (andi rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvand (read-register rs1 mem-state) imm))))
+  (increment-pc (write-register rd (bvand (read-register rs1 mem-state) imm) mem-state)))
 
 (define (slli rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand imm (int32 31))))))
+  (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand imm (int32 31))) mem-state)))
 
 (define (srli rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvlshr (read-register rs1 mem-state) (bvand imm (int32 31))))))
+  (increment-pc (write-register rd (bvlshr (read-register rs1 mem-state) (bvand imm (int32 31))) mem-state)))
 
 (define (srai rd rs1 imm mem-state)
-  (increment-pc (write-register rd (bvashr (read-register rs1 mem-state) (bvand imm (int32 31))))))
+  (increment-pc (write-register rd (bvashr (read-register rs1 mem-state) (bvand imm (int32 31))) mem-state)))
 
 (define (slti rd rs1 imm mem-state)
-  (increment-pc (write-register rd (if (bvslt (read-register rs1 mem-state) imm) (int32 1) (int32 0)))))
+  (increment-pc (write-register rd (if (bvslt (read-register rs1 mem-state) imm) (int32 1) (int32 0)) mem-state)))
 
 (define (sltiu rd rs1 imm mem-state)
-  (increment-pc (write-register rd (if (bvult (read-register rs1 mem-state) imm) (int32 1) (int32 0)))))
+  (increment-pc (write-register rd (if (bvult (read-register rs1 mem-state) imm) (int32 1) (int32 0)) mem-state)))
 
 ;============== Memory
 (define (lw rd imm rs1 mem-state)
@@ -181,25 +183,41 @@
   (let ([ind (convert-sp-index rs2 imm mem-state)])
     (assert (< ind (length (cpu-stack mem-state))))
     (assert (< ind (bitvector->integer (bvneg (read-register x2 mem-state)))))
-   (increment-pc (cpu
-   (cpu-pc mem-state)
-   (cpu-registers mem-state)
-   (list-set (cpu-stack mem-state) ind (read-register rs1 mem-state))))))
+    (increment-pc (cpu
+    (cpu-pc mem-state)
+    (cpu-registers mem-state)
+    (list-set (cpu-stack mem-state) ind (read-register rs1 mem-state))))))
 
-;============== Branching and Jumps
+;============== B, J, U - Types
+(define (lui rd imm mem-state)
+  (increment-pc (write-register rd (bvshl imm (int32 12)) mem-state)))
 
 ;========================= Replaced Instructions
 ;============== R-Type
 ;============== I-Type
+(define (myaddi rd rs1 imm mem-state)
+  (addi sp sp (int32 -20) mem-state)
+  (sw t0 0 sp)
+  (sw t1 4 sp)
+  (sw t2 8 sp)
+  (sw rs1 12 sp)
+  (lw t1  12 sp)
+  (addi t0 x0 imm)
+  (sub t0 x0 t0)
+  (sub t2 t1 t0)
+  (sw t2 16 sp)
+  (lw t2 8 sp)
+  (lw t1 4 sp)
+  (lw t0 0 sp)
+  (lw rd 16 sp)
+  (addi sp sp (int32 20))
+  (increment-pc mem-state))
+;TODO fix mem-states
+
 ;============== Memory
-;============== Branching and Jumps
+;============== B, J, U - Types
 
-
-;define testprogram e.g. (myadd x10 x7 x3 4 register stack)
-;define stack, registers etc
-;loop that executes program
-;(function which takes program as parameter and returns registers etc? for verification)
-;#########################################
+;========================= Main Functions
 
 (define (execute-instruction instruction mem-state)
   (match instruction
@@ -224,8 +242,10 @@
     [(op-sltiu rd rs1 imm) (sltiu rd rs1 imm mem-state)]
     [(op-lw rd imm rs1) (lw rd imm rs1 mem-state)]
     [(op-sw rs1 imm rd) (sw rs1 imm rd mem-state)]
+    ;B, J , U
+    [(op-lui rd imm) (lui rd imm mem-state)]
+    ;replaced instructions
     ))
-;TODO alle instructions
 
 (define-bounded (execute-program instructions mem-state)
   (let ([pc (cpu-pc mem-state)] [len (length instructions)])
@@ -235,15 +255,7 @@
     [else mem-state])))
 
 
-;######################################### Test-Bench
-;; (define-symbolic b boolean?)
-;; (define test-cpu
-;;   (if b
-;;       (cpu 0 (list (int32 0) (int32 1) (int32 1) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0)) 0)
-;;       (cpu 0 (list (int32 0) (int32 1) (int32 1) (int32 1) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0)) 1)))
-
-;(define-symbolic* x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 int32?)
-
+;######################################### Test-Programs
 (define test-cpu (cpu 0
                   (list (int32 0) (int32 1) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
                    (list (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))))
@@ -254,9 +266,7 @@
      (assume (< 31 (length (cpu-registers test-cpu))))
      (assert (eq? (read-register x0 test-cpu) 0))))
 
-;(addi x1 x2 (int32 6) test-cpu)
-
 ;Test-Program 1
-(define program (list (op-addi x1 x1 (int32 3)) (op-addi x2 x0 (int32 -1)) (op-sw x1 0 sp) (op-lw x4 0 sp)))
+(define program (list (op-addi x1 x1 (int32 3)) (op-addi x2 x0 (int32 -1)) (op-sw x1 0 sp) (op-lw x4 0 sp) (op-and x5 x1 x3)))
 (define memory1 (execute-program program test-cpu))
 memory1
