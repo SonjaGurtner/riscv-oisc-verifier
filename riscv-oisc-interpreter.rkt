@@ -1,4 +1,5 @@
 #lang rosette
+(require threading)
 
 ; int32? is a shorthand for the type (bitvector 32).
 (define int32? (bitvector 32))
@@ -109,7 +110,10 @@
   (cpu (+ 1 (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
 (define (convert-sp-index rd offset mem-state)
- (- (-  (bitvector->integer (bvneg (read-register rd mem-state))) offset) 1))
+  (- (-  (bitvector->integer (bvneg (read-register rd mem-state))) offset) 1))
+
+(define (set-pc pc mem-state)
+  (cpu pc (cpu-registers mem-state) (cpu-stack mem-state)))
 
 ;========================= RISC-V Instructions
 ;============== R-Type
@@ -119,13 +123,14 @@
 (define (sub rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvsub (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
-(define (xor rd rs1 rs2 mem-state)
+;added r for risc-v to the name, rosette already has xor/or/and defined as functions
+(define (rxor rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state) ))
 
-(define (or rd rs1 rs2 mem-state)
+(define (ror rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvor (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
-(define (and rd rs1 rs2 mem-state)
+(define (rand rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvand (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
 (define (sll rd rs1 rs2 mem-state)
@@ -196,23 +201,24 @@
 ;============== R-Type
 ;============== I-Type
 (define (myaddi rd rs1 imm mem-state)
-  (addi sp sp (int32 -20) mem-state)
+  (~>> mem-state
+  (addi sp sp (int32 -5))
   (sw t0 0 sp)
-  (sw t1 4 sp)
-  (sw t2 8 sp)
-  (sw rs1 12 sp)
-  (lw t1  12 sp)
+  (sw t1 1 sp)
+  (sw t2 2 sp)
+  (sw rs1 3 sp)
+  (lw t1 3 sp)
   (addi t0 x0 imm)
   (sub t0 x0 t0)
   (sub t2 t1 t0)
-  (sw t2 16 sp)
-  (lw t2 8 sp)
-  (lw t1 4 sp)
+  (sw t2 4 sp)
+  (lw t2 2 sp)
+  (lw t1 1 sp)
   (lw t0 0 sp)
-  (lw rd 16 sp)
-  (addi sp sp (int32 20))
-  (increment-pc mem-state))
-;TODO fix mem-states
+  (lw rd 4 sp)
+  (addi sp sp (int32 5))
+  (set-pc (cpu-pc mem-state))
+  (increment-pc)))
 
 ;============== Memory
 ;============== B, J, U - Types
@@ -223,9 +229,9 @@
   (match instruction
     [(op-add rd rs1 rs2) (add rd rs1 rs2 mem-state)]
     [(op-sub rd rs1 rs2) (sub rd rs1 rs2 mem-state)]
-    [(op-xor rd rs1 rs2) (xor rd rs1 rs2 mem-state)]
-    [(op-or rd rs1 rs2) (or rd rs1 rs2 mem-state)]
-    [(op-and rd rs1 rs2) (and rd rs1 rs2 mem-state)]
+    [(op-xor rd rs1 rs2) (rxor rd rs1 rs2 mem-state)]
+    [(op-or rd rs1 rs2) (ror rd rs1 rs2 mem-state)]
+    [(op-and rd rs1 rs2) (rand rd rs1 rs2 mem-state)]
     [(op-sll rd rs1 rs2) (sll rd rs1 rs2 mem-state)]
     [(op-srl rd rs1 rs2) (srl rd rs1 rs2 mem-state)]
     [(op-sra rd rs1 rs2) (sra rd rs1 rs2 mem-state)]
@@ -245,6 +251,7 @@
     ;B, J , U
     [(op-lui rd imm) (lui rd imm mem-state)]
     ;replaced instructions
+    [(op-myaddi rd rs1 imm) (myaddi rd rs1 imm mem-state)]
     ))
 
 (define-bounded (execute-program instructions mem-state)
@@ -257,16 +264,71 @@
 
 ;######################################### Test-Programs
 (define test-cpu (cpu 0
-                  (list (int32 0) (int32 1) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
+                  (list (int32 0) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
                    (list (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))))
 
-(verify
-   (begin
-     (assume (eq? (list-ref (cpu-registers test-cpu) 0) 0))
-     (assume (< 31 (length (cpu-registers test-cpu))))
-     (assert (eq? (read-register x0 test-cpu) 0))))
+;(verify
+;   (begin
+;     (assume (eq? (list-ref (cpu-registers test-cpu) 0) 0))
+;     (assume (< 31 (length (cpu-registers test-cpu))))
+;     (assert (eq? (read-register x0 test-cpu) 0))))
 
 ;Test-Program 1
-(define program (list (op-addi x1 x1 (int32 3)) (op-addi x2 x0 (int32 -1)) (op-sw x1 0 sp) (op-lw x4 0 sp) (op-and x5 x1 x3)))
-(define memory1 (execute-program program test-cpu))
-memory1
+(define program1 (list (op-addi x1 x1 (int32 3)) (op-addi sp sp (int32 -1)) (op-sw x1 0 sp) (op-lw x4 0 sp) (op-addi sp sp (int32 1))))
+(define memory1 (execute-program program1 test-cpu))
+;memory1
+
+(define program2 (list (op-myaddi x1 x1 (int32 3)) (op-myaddi sp sp (int32 -1)) (op-sw x1 0 sp) (op-lw x4 0 sp) (op-myaddi sp sp (int32 1))))
+(define memory2 (execute-program program2 test-cpu))
+;memory2
+
+(define (eq-mem-state memory1 memory2)
+  (and
+   (eq? (cpu-pc memory1) (cpu-pc memory2))
+   (eq? (cpu-registers memory1) (cpu-registers memory2))
+   (eq?
+    (take (cpu-stack memory1) (bitvector->integer (bvneg (read-register sp memory1))))
+    (take (cpu-stack memory2) (bitvector->integer (bvneg (read-register sp memory2)))))))
+;comparing stack only works if program doesn't allocate memory that it doesn't use
+
+;verify that if mem-states are equal, executing  instructions add and myadd produce still equivalent states
+; parameters for the verifications
+(define-symbolic imm int32?)
+(define-symbolic rd rs1 integer?)
+
+(define (valid-src-reg reg)
+  (and (>= reg 0) (not (= reg sp)) (<= reg 31)))
+
+(define (valid-dest-reg reg)
+  (and (>= reg 1) (<= reg 31)))
+
+(verify (begin
+          (assume (eq-mem-state memory1 memory2))
+          (assume (valid-src-reg rs1))
+          (assume (valid-dest-reg rd))
+          (assume (not (= rd sp)))      ;exclude sp because of the comment above
+          (assert (eq-mem-state (addi x1 rs1 imm memory1) (myaddi x1 rs1 imm memory2)))
+          ))
+
+(eq-mem-state memory1 memory2)
+;cex
+;(evaluate (list rd rs1 imm (addi x1 rs1 imm memory1) (myaddi x1 rs1 imm memory2)) cex)
+;(display "mem2\n")
+;; (evaluate (~>> memory2
+;;  (addi sp sp (int32 -5))
+;;  (sw t0 0 sp)
+;;  (sw t1 1 sp)
+;;  (sw t2 2 sp)
+;;  (sw rs1 3 sp)
+;;  (lw t1 3 sp)
+;;  (addi t0 x0 imm)
+;;  (sub t0 x0 t0)
+;;  (sub t2 t1 t0)
+;;  (sw t2 4 sp)
+;;  (lw t2 2 sp)
+;;  (lw t1 1 sp)
+;;  (lw t0 0 sp)
+;;  (lw x1 4 sp)
+;;  (addi sp sp (int32 5))
+;;  (set-pc (cpu-pc memory2))
+;;  (increment-pc)) cex)
