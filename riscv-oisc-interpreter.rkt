@@ -315,20 +315,22 @@
 
 
 ;######################################### Test-Programs
+;cpu memory can be extended if more space needed
 (define test-cpu (cpu 0
                   (list (int32 0) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
                   (list (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))))
 
-(verify
-  (begin
-    (assume (eq? (list-ref (cpu-registers test-cpu) 0) 0))
-    (assume (< 31 (length (cpu-registers test-cpu))))
-    (assert (eq? (read-register x0 test-cpu) 0))))
+;; (verify
+;;   (begin
+;;     (assume (eq? (list-ref (cpu-registers test-cpu) 0) 0))
+;;     (assume (= 32 (length (cpu-registers test-cpu))))
+;;     (assert (eq? (read-register x0 test-cpu) 0))))
 
 ;Test-Program 1
 (define program1 (list (op-addi x1 x1 (int32 3)) (op-add x3 x1 x1)))
 (define memory1 (execute-program program1 test-cpu))
 
+;Test-Program 2
 (define program2 (list (op-myaddi x1 x1 (int32 3)) (op-myadd x3 x1 x1)))
 (define memory2 (execute-program program2 test-cpu))
 
@@ -341,9 +343,10 @@
     (take (cpu-stack memory2) (- (bitvector->integer (read-register sp memory2))))
    )))
 ;comparing stack only works if program doesn't allocate memory that it doesn't use
-(display "====Mem 1\n")
-memory1
-(display "\n====Mem 2\n")
-memory2
-(display "\nSame architectural state?\n")
-(eq-mem-state memory1 memory2)
+
+;; (display "====Mem 1\n")
+;; memory1
+;; (display "\n====Mem 2\n")
+;; memory2
+;; (display "\nSame architectural state?\n")
+;; (eq-mem-state memory1 memory2)
