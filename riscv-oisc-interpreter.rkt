@@ -84,23 +84,23 @@
 
 ;Replaced instructions
 (struct op-myadd (rd rs1 rs2) #:super struct:instruction)
-(struct op-myxor (rd rs1 rs2) #:super struct:instruction)
-(struct op-myor (rd rs1 rs2) #:super struct:instruction)
-(struct op-myand (rd rs1 rs2) #:super struct:instruction)
-(struct op-mysll (rd rs1 rs2) #:super struct:instruction)
+;(struct op-myxor (rd rs1 rs2) #:super struct:instruction)
+;(struct op-myor (rd rs1 rs2) #:super struct:instruction)
+;(struct op-myand (rd rs1 rs2) #:super struct:instruction)
+;(struct op-mysll (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-mysrl (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-mysra (rd rs1 rs2) #:super struct:instruction)
-(struct op-myslt (rd rs1 rs2) #:super struct:instruction)
-(struct op-mysltu (rd rs1 rs2) #:super struct:instruction)
+;(struct op-myslt (rd rs1 rs2) #:super struct:instruction)
+;(struct op-mysltu (rd rs1 rs2) #:super struct:instruction)
 (struct op-myaddi (rd rs1 imm) #:super struct:instruction)
-(struct op-myxori (rd rs1 imm) #:super struct:instruction)
-(struct op-myori (rd rs1 imm) #:super struct:instruction)
-(struct op-myandi (rd rs1 imm) #:super struct:instruction)
-(struct op-myslli (rd rs1 imm) #:super struct:instruction)
+;(struct op-myxori (rd rs1 imm) #:super struct:instruction)
+;(struct op-myori (rd rs1 imm) #:super struct:instruction)
+;(struct op-myandi (rd rs1 imm) #:super struct:instruction)
+;(struct op-myslli (rd rs1 imm) #:super struct:instruction)
 ;(struct op-mysrli (rd rs1 imm) #:super struct:instruction)
 ;(struct op-mysrai (rd rs1 imm) #:super struct:instruction)
-(struct op-myslti (rd rs1 imm) #:super struct:instruction)
-(struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
+;(struct op-myslti (rd rs1 imm) #:super struct:instruction)
+;(struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
 ;jumps and branching
 ;auipc
 
@@ -120,10 +120,10 @@
 
 ;incrementes by 1 to use it as index for the program list, and making it comparable
 (define (increment-pc mem-state)
-  (cpu (+ 1 (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
+  (cpu (+ 4 (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
 (define (convert-sp-index rd offset mem-state)
-  (- (- (- (bitvector->integer (read-register rd mem-state))) offset) 1))
+  (- (/ (- (- (bitvector->integer (read-register rd mem-state))) offset) 4) 1))
 
 (define (set-pc pc mem-state)
   (cpu pc (cpu-registers mem-state) (cpu-stack mem-state)))
@@ -214,43 +214,130 @@
 ;============== R-Type
 (define (myadd rd rs1 rs2 mem-state)
   (~>> mem-state
-  (addi sp sp (int32 -6))
+  (addi sp sp (int32 -24))
   (sw t0 0 sp)
-  (sw t1 1 sp)
-  (sw t2 2 sp)
-  (sw rs1 3 sp)
-  (sw rs2 4 sp)
-  (lw t1 3 sp)
-  (lw t0 4 sp)
+  (sw t1 4 sp)
+  (sw t2 8 sp)
+  (sw rs1 12 sp)
+  (sw rs2 16 sp)
+  (lw t1 12 sp)
+  (lw t0 16 sp)
   (sub t0 x0 t0)
   (sub t2 t1 t0)
-  (sw t2 5 sp)
-  (lw t2 2 sp)
-  (lw t1 1 sp)
+  (sw t2 20 sp)
+  (lw t2 8 sp)
+  (lw t1 4 sp)
   (lw t0 0 sp)
-  (lw rd 5 sp)
-  (addi sp sp (int32 6))
+  (lw rd 20 sp)
+  (addi sp sp (int32 24))
   (set-pc (cpu-pc mem-state))
   (increment-pc)))
+
+(define (myor rd rs1 rs2 mem-state)
+  (let ([start-pc (cpu-pc mem-state)]
+        [mem1 (~>> mem-state
+              (addi sp sp -44)
+              (sw t3 0 sp)
+              (sw t4 4 sp)
+              (sw t5 8 sp)
+              (sw t6 12 sp)      ;msb eliminated rs1
+              (sw t0 16 sp)      ;msb eliminated rs2
+              (sw t1 20 sp)      ;loop variable i
+              (sw t2 24 sp)      ;loop limit 32
+              (sw s1 28 sp)
+              (sw rs1 32 sp)
+              (sw rs2 36 sp)
+              (lw t3 32 sp)
+              (lw t4 36 sp)
+              (addi t0 x0 1)
+              (addi t1 x0 1)
+              (addi t2 x0 33)
+              (sub s1 x0 x0))])
+              ;main loop, loops over every bit
+       (for ([i (read-register t2)])
+         (assert (eq? (+ 1 i) (read-register t1)))
+         (slli s1 s1 1)
+         (slli t5 t3 1)
+         (srli t5 t5 1)
+         (slli t6 t4 1)
+         (srli t6 t6 1)
+         ;do magic
+         )
+
+    (increment-pc (set-pc start-pc mem1)))
+
+ 
+  (sub t5 t3 t5)
+  (MYBNE t5 x0 102f)
+  (110:)
+  (sub t6 t4 t6)
+  (MYBNE t6 x0 103f)
+  (111:)
+  (MYADD t5 t5 t6)
+  (blt x0 t5 104f)
+  (beq x0 x0 105f)
+
+  102
+  (MYADDI t5 x0 1)
+  (beq x0 x0 110b)
+
+  103
+  (MYADDI t6 x0 1)
+  (beq x0 x0 111b)
+
+  104
+  (MYADDI s1 s1 1)
+
+  105
+  (MYADDI t1 t1 1)
+  (MYSLLI_SAFE t3 t3 1)
+  (MYSLLI_SAFE t4 t4 1)
+  (beq x0 x0 101b)
+
+  107
+  (sub rd x0 r2)
+  (sub rd x0 rd)
+  (beq x0 x0 109f)
+
+  108
+  (sub rd x0 r1)
+  (sub rd x0 rd)
+  (beq x0 x0 109f)
+
+  106
+  (sw s1 40 sp)
+  (lw s1 28 sp)
+  (lw t2 24 sp)
+  (lw t1 20 sp)
+  (lw t0 16 sp)
+  (lw t6 12 sp)
+  (lw t5 8 sp)
+  (lw t4 4 sp)
+  (lw t3 0 sp)
+  (lw rd 40 sp)
+  (addi sp sp 44)
+
+  (set-pc (cpu-pc mem-state))
+  (increment-pc))
 
 ;============== I-Type
 (define (myaddi rd rs1 imm mem-state)
   (~>> mem-state
-  (addi sp sp (int32 -5))
+  (addi sp sp (int32 -20))
   (sw t0 0 sp)
-  (sw t1 1 sp)
-  (sw t2 2 sp)
-  (sw rs1 3 sp)
-  (lw t1 3 sp)
+  (sw t1 4 sp)
+  (sw t2 8 sp)
+  (sw rs1 12 sp)
+  (lw t1 12 sp)
   (addi t0 x0 imm)
   (sub t0 x0 t0)
   (sub t2 t1 t0)
-  (sw t2 4 sp)
-  (lw t2 2 sp)
-  (lw t1 1 sp)
+  (sw t2 16 sp)
+  (lw t2 8 sp)
+  (lw t1 4 sp)
   (lw t0 0 sp)
-  (lw rd 4 sp)
-  (addi sp sp (int32 5))
+  (lw rd 16 sp)
+  (addi sp sp (int32 20))
   (set-pc (cpu-pc mem-state))
   (increment-pc)))
 
@@ -286,53 +373,32 @@
     [(op-lui rd imm) (lui rd imm mem-state)]
     ;replaced instructions
     [(op-myadd rd rs1 rs2) (myadd rd rs1 rs2 mem-state)]
-    ;[(op-myxor rd rs1 rs2) (myxor rd rs1 rs2 mem-state)]
-    ;[(op-myor rd rs1 rs2) (myor rd rs1 rs2 mem-state)]
-    ;[(op-myand rd rs1 rs2) (myand rd rs1 rs2 mem-state)]
-    ;[(op-mysll rd rs1 rs2) (mysll rd rs1 rs2 mem-state)]
+    ;; [(op-myxor rd rs1 rs2) (myxor rd rs1 rs2 mem-state)]
+    ;; [(op-myor rd rs1 rs2) (myor rd rs1 rs2 mem-state)]
+    ;; [(op-myand rd rs1 rs2) (myand rd rs1 rs2 mem-state)]
+    ;; [(op-mysll rd rs1 rs2) (mysll rd rs1 rs2 mem-state)]
     ;[(op-mysrl rd rs1 rs2) (mysrl rd rs1 rs2 mem-state)]
-   ;[(op-mysra rd rs1 rs2) (mysra rd rs1 rs2 mem-state)]
+    ;[(op-mysra rd rs1 rs2) (mysra rd rs1 rs2 mem-state)]
     ;; [(op-myslt rd rs1 rs2) (myslt rd rs1 rs2 mem-state)]
     ;; [(op-mysltu rd rs1 rs2) (mysltu rd rs1 rs2 mem-state)]
     [(op-myaddi rd rs1 imm) (myaddi rd rs1 imm mem-state)]
     ;; [(op-myxori rd rs1 imm) (myxori rd rs1 imm mem-mystate)]
-    ;; [(op-myori rd rs1 imm) (myori rd rs1 imm mem-mystate)]
+    ;[(op-myori rd rs1 imm) (myori rd rs1 imm mem-mystate)]
     ;; [(op-myandi rd rs1 imm) (myandi rd rs1 imm mem-mystate)]
     ;; [(op-myslli rd rs1 imm) (myslli rd rs1 imm mem-mystate)]
     ;[(op-mysrli rd rs1 imm) (mysrli rd rs1 imm mem-mystate)]
     ;[(op-mysrai rd rs1 imm) (mysrai rd rs1 imm mem-mystate)]
-    ;[(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-mystate)]
-    ;[(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-mystate)]
+    ;; [(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-mystate)]
+    ;; [(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-mystate)]
     ;my B, J, U
     ))
 
 (define-bounded (execute-program instructions mem-state)
   (let ([pc (cpu-pc mem-state)] [len (length instructions)])
     (cond
-    [(< pc len)
-     (execute-program instructions (execute-instruction (list-ref instructions pc) mem-state))]
+    [(< (/ pc 4) len)
+     (execute-program instructions (execute-instruction (list-ref instructions (/ pc 4)) mem-state))]
     [else mem-state])))
-
-
-;######################################### Test-Programs
-;cpu memory can be extended if more space needed
-(define test-cpu (cpu 0
-                  (list (int32 0) (int32 1) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
-                  (list (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))))
-
-;; (verify
-;;   (begin
-;;     (assume (eq? (list-ref (cpu-registers test-cpu) 0) 0))
-;;     (assume (= 32 (length (cpu-registers test-cpu))))
-;;     (assert (eq? (read-register x0 test-cpu) 0))))
-
-;Test-Program 1
-(define program1 (list (op-addi x1 x1 (int32 3)) (op-add x3 x1 x1)))
-(define memory1 (execute-program program1 test-cpu))
-
-;Test-Program 2
-(define program2 (list (op-myaddi x1 x1 (int32 3)) (op-myadd x3 x1 x1)))
-(define memory2 (execute-program program2 test-cpu))
 
 (define (eq-mem-state memory1 memory2)
   (and
@@ -342,11 +408,3 @@
     (take (cpu-stack memory1) (- (bitvector->integer (read-register sp memory1))))
     (take (cpu-stack memory2) (- (bitvector->integer (read-register sp memory2))))
    )))
-;comparing stack only works if program doesn't allocate memory that it doesn't use
-
-;; (display "====Mem 1\n")
-;; memory1
-;; (display "\n====Mem 2\n")
-;; memory2
-;; (display "\nSame architectural state?\n")
-;; (eq-mem-state memory1 memory2)
