@@ -2,15 +2,16 @@
 (require threading)
 (provide (all-defined-out))
 
+(define XLEN 8)
 ; int32? is a shorthand for the type (bitvector 32).
-(define int32? (bitvector 32))
+(define int32? (bitvector XLEN))
 
 ; int32 takes as input an integer literal and returns the corresponding 32-bit bitvector value.
 (define (int32 i)
   (bv i int32?))
 
 ; Parameter that controls the number of unrollings, for the main execute method (to prevent infinite runs), has to be adjusted
-(define fuel (make-parameter 30))
+(define fuel (make-parameter 50))
 
 (define-syntax-rule
   (define-bounded (id param ...) body ...)
@@ -18,6 +19,30 @@
     (assert (> (fuel) 0) "Limit of loop runs reached")
     (parameterize ([fuel (sub1 (fuel))])
       body ...)))
+
+(define-syntax ~>>for
+  (syntax-rules ()
+    ((_ pre bound check body ...)
+     (begin
+       (let ([x pre])
+         (for ([i bound])
+           (assert (check i x))
+           (set! x (~>> x body ...)))
+         x)))))
+
+(define-syntax ~>>when
+  (syntax-rules ()
+    ((_ pre check body ...)
+     (begin
+       (let ([x pre])
+         (when (check x)
+           (set! x (~>> x body ...)))
+         x)))))
+
+; (read_and_print_value t1 _)
+(define (read_and_print_value rs1 mem-state)
+  (display (read-register rs1 mem-state))
+  mem-state)
 
 ;Define Memory, Register Indices, CPU (PC, Registers, Stack)
 (define-values (x0 zero) (values 0 0))
@@ -85,7 +110,7 @@
 ;Replaced instructions
 (struct op-myadd (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-myxor (rd rs1 rs2) #:super struct:instruction)
-;(struct op-myor (rd rs1 rs2) #:super struct:instruction)
+(struct op-myor (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-myand (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-mysll (rd rs1 rs2) #:super struct:instruction)
 ;(struct op-mysrl (rd rs1 rs2) #:super struct:instruction)
@@ -234,91 +259,58 @@
   (increment-pc)))
 
 (define (myor rd rs1 rs2 mem-state)
-  (let ([start-pc (cpu-pc mem-state)]
-        [mem1 (~>> mem-state
-              (addi sp sp -44)
-              (sw t3 0 sp)
-              (sw t4 4 sp)
-              (sw t5 8 sp)
-              (sw t6 12 sp)      ;msb eliminated rs1
-              (sw t0 16 sp)      ;msb eliminated rs2
-              (sw t1 20 sp)      ;loop variable i
-              (sw t2 24 sp)      ;loop limit 32
-              (sw s1 28 sp)
-              (sw rs1 32 sp)
-              (sw rs2 36 sp)
-              (lw t3 32 sp)
-              (lw t4 36 sp)
-              (addi t0 x0 1)
-              (addi t1 x0 1)
-              (addi t2 x0 33)
-              (sub s1 x0 x0))])
-              ;main loop, loops over every bit
-       (for ([i (read-register t2)])
-         (assert (eq? (+ 1 i) (read-register t1)))
-         (slli s1 s1 1)
-         (slli t5 t3 1)
-         (srli t5 t5 1)
-         (slli t6 t4 1)
-         (srli t6 t6 1)
-         ;do magic
-         )
-
-    (increment-pc (set-pc start-pc mem1)))
-
- 
-  (sub t5 t3 t5)
-  (MYBNE t5 x0 102f)
-  (110:)
-  (sub t6 t4 t6)
-  (MYBNE t6 x0 103f)
-  (111:)
-  (MYADD t5 t5 t6)
-  (blt x0 t5 104f)
-  (beq x0 x0 105f)
-
-  102
-  (MYADDI t5 x0 1)
-  (beq x0 x0 110b)
-
-  103
-  (MYADDI t6 x0 1)
-  (beq x0 x0 111b)
-
-  104
-  (MYADDI s1 s1 1)
-
-  105
-  (MYADDI t1 t1 1)
-  (MYSLLI_SAFE t3 t3 1)
-  (MYSLLI_SAFE t4 t4 1)
-  (beq x0 x0 101b)
-
-  107
-  (sub rd x0 r2)
-  (sub rd x0 rd)
-  (beq x0 x0 109f)
-
-  108
-  (sub rd x0 r1)
-  (sub rd x0 rd)
-  (beq x0 x0 109f)
-
-  106
-  (sw s1 40 sp)
-  (lw s1 28 sp)
-  (lw t2 24 sp)
-  (lw t1 20 sp)
-  (lw t0 16 sp)
-  (lw t6 12 sp)
-  (lw t5 8 sp)
-  (lw t4 4 sp)
-  (lw t3 0 sp)
-  (lw rd 40 sp)
-  (addi sp sp 44)
-
-  (set-pc (cpu-pc mem-state))
-  (increment-pc))
+  (let ([start-pc (cpu-pc mem-state)])
+       (if (bveq (read-register rs1 mem-state) (int32 0))
+           (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+           (if (bveq (read-register rs2 mem-state) (int32 0))
+               (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+               (~>> mem-state
+                    (addi sp sp (int32 -44))
+                    (sw t3 0 sp)
+                    (sw t4 4 sp)
+                    (sw t5 8 sp)
+                    (sw t6 12 sp)      ;msb eliminated rs1
+                    (sw t0 16 sp)      ;msb eliminated rs2
+                    (sw t1 20 sp)      ;loop variable i
+                    (sw t2 24 sp)      ;loop limit XLEN
+                    (sw s1 28 sp)
+                    (sw rs1 32 sp)
+                    (sw rs2 36 sp)
+                    (lw t3 32 sp)
+                    (lw t4 36 sp)
+                    (addi t0 x0 (int32 1))
+                    (add t1 x0 x0)
+                    (addi t2 x0 (int32 XLEN))
+                    (sub s1 x0 x0)
+                    (~>>for _ XLEN
+                        (λ(i mem) (eq? (int32 i) (read-register t1 mem)))
+                        (slli s1 s1 (int32 1))
+                        (slli t5 t3 (int32 1))
+                        (srli t5 t5 (int32 1))
+                        (slli t6 t4 (int32 1))
+                        (srli t6 t6 (int32 1))
+                        (sub t5 t3 t5)
+                        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (int32 0)))) (addi t5 x0 (int32 1)))
+                        (sub t6 t4 t6)
+                        (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (int32 0)))) (addi t6 x0 (int32 1)))
+                        (add t5 t5 t6)
+                        (~>>when _ (λ(mem) (bvslt (int32 0) (read-register t5 mem))) (addi s1 s1 (int32 1)))
+                        (addi t1 t1 (int32 1))
+                        (slli t3 t3 (int32 1))
+                        (slli t4 t4 (int32 1)))
+                    (sw s1 40 sp)
+                    (lw s1 28 sp)
+                    (lw t2 24 sp)
+                    (lw t1 20 sp)
+                    (lw t0 16 sp)
+                    (lw t6 12 sp)
+                    (lw t5 8 sp)
+                    (lw t4 4 sp)
+                    (lw t3 0 sp)
+                    (lw rd 40 sp)
+                    (addi sp sp (int32 44))
+                    (set-pc start-pc)
+                    (increment-pc))))))
 
 ;============== I-Type
 (define (myaddi rd rs1 imm mem-state)
@@ -374,7 +366,7 @@
     ;replaced instructions
     [(op-myadd rd rs1 rs2) (myadd rd rs1 rs2 mem-state)]
     ;; [(op-myxor rd rs1 rs2) (myxor rd rs1 rs2 mem-state)]
-    ;; [(op-myor rd rs1 rs2) (myor rd rs1 rs2 mem-state)]
+    [(op-myor rd rs1 rs2) (myor rd rs1 rs2 mem-state)]
     ;; [(op-myand rd rs1 rs2) (myand rd rs1 rs2 mem-state)]
     ;; [(op-mysll rd rs1 rs2) (mysll rd rs1 rs2 mem-state)]
     ;[(op-mysrl rd rs1 rs2) (mysrl rd rs1 rs2 mem-state)]
@@ -405,6 +397,6 @@
    (equal? (cpu-pc memory1) (cpu-pc memory2))
    (equal? (cpu-registers memory1) (cpu-registers memory2))
    (equal?
-    (take (cpu-stack memory1) (- (bitvector->integer (read-register sp memory1))))
-    (take (cpu-stack memory2) (- (bitvector->integer (read-register sp memory2))))
+    (take (cpu-stack memory1) (- (/ (bitvector->integer (read-register sp memory1)) 4)))
+    (take (cpu-stack memory2) (- (/ (bitvector->integer (read-register sp memory2)) 4)))
    )))
