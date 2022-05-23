@@ -49,11 +49,11 @@
        (eq-mem-state test1-mem test2-mem)))
      (assert (eq-mem-state (func1 rd rs1 (if r_type rs2 imm) test1-mem) (func2 rd rs1 (if r_type rs2 imm) test2-mem))))))
 
-(define-syntax-rule (verify-eq #:func1 func1 #:func2 func2 #:space-on-stack space #:r_type r_type)
+(define-syntax-rule (verify-eq #:func1 func1 #:func2 func2 #:space-on-stack space #:r_type r_type #:assumptions assumptions)
   (begin
     (displayln (format "Verifying equality of ~a and ~a" func1 func2))
     (define-values (m milli real-milli cpu-time)
-      (time-apply (λ () (verify-func func1 func2 space r_type)) '()))
+      (time-apply (λ () (begin (assume (assumptions test1-mem)) (verify-func func1 func2 space r_type))) '()))
     (if (eq? (unsat) (first m))
         (displayln (format "OK ~a ms" real-milli))
         ;; complete the solution in case the model is partial
@@ -62,7 +62,7 @@
                                                       test2-r1 test2-r2 test2-r3 test2-r4 test2-r5 test2-r6 test2-r7 test2-r8 test2-r9 test2-r10 test2-r11 test2-r12 test2-r13 test2-r14 test2-r15 test2-r16 test2-r17 test2-r18 test2-r19 test2-r20 test2-r21 test2-r22 test2-r23 test2-r24 test2-r25 test2-r26 test2-r27 test2-r28 test2-r29 test2-r30 test2-r31
                                                       test2-mem0 test2-mem1 test2-mem2 test2-mem3 test2-mem4 test2-mem5 test2-mem6 test2-mem7 test2-mem8 test2-mem9 test2-mem10 test2-mem11 test2-mem12 test2-mem13 test2-mem14 test2-mem15 test2-mem16 test2-mem17 test2-mem18 test2-mem19 test2-mem20 test2-mem21 test2-mem22 test2-mem23 test2-mem24 test2-mem25 test2-mem26 test2-mem27 test2-mem28 test2-mem29 test2-mem30 test2-mem31))])
           (displayln (format "FAIL ~a\n==> ~a ms" (first m) real-milli))
-          (displayln (format "Arguments ~a" (evaluate (list rd rs1 (if r_type rs2 imm)) cex)))
+          (displayln (format "Arguments ~a" (evaluate (list (bitvector->integer rd) (bitvector->integer rs1) (bitvector->integer (if r_type rs2 imm))) cex)))
           (displayln "Memory before Execution")
           (for ([k (range 32)] [i (evaluate (cpu-registers test1-mem) cex)])
             (displayln (format "x~a ~a" k i)))
@@ -81,6 +81,7 @@
 ;(current-solver (boolector))
 ;(output-smt #t)
 
+(displayln "Verification of R-Type")
 
 ;; (verify-eq
 ;;  #:func1 add
@@ -89,19 +90,63 @@
 ;;  #:r_type true)
 
 ;; (verify-eq
+;;  #:func1 rvor
+;;  #:func2 myor
+;;  #:space-on-stack (int32 11)
+;;  #:r_type true)
+
+;; (verify-eq
+;;  #:func1 rvxor
+;;  #:func2 myxor
+;;  #:space-on-stack (int32 11)
+;;  #:r_type true)
+
+;; (verify-eq
+;;  #:func1 rvand
+;;  #:func2 myand
+;;  #:space-on-stack (int32 11)
+;;  #:r_type true)
+
+(displayln "Verification of I-Type")
+
+;; (verify-eq
 ;;  #:func1 addi
 ;;  #:func2 myaddi
 ;;  #:space-on-stack (int32 5)
 ;;  #:r_type false)
 
 ;; (verify-eq
-;;  #:func1 ror
-;;  #:func2 myor
-;;  #:space-on-stack (int32 11)
-;;  #:r_type true)
+;;  #:func1 ori
+;;  #:func2 myori
+;;  #:space-on-stack (int32 3)
+;;  #:r_type false)
+
+;; (verify-eq
+;;  #:func1 xori
+;;  #:func2 myxori
+;;  #:space-on-stack (int32 3)
+;;  #:r_type false)
+
+;; (verify-eq
+;;  #:func1 andi
+;;  #:func2 myandi
+;;  #:space-on-stack (int32 3)
+;;  #:r_type false
+;;#:assumptions (λ(mem) #t))
 
 (verify-eq
- #:func1 rxor
- #:func2 myxor
- #:space-on-stack (int32 11)
- #:r_type true)
+ #:func1 slli
+ #:func2 myslli-safe
+ #:space-on-stack (int32 6)
+ #:r_type false
+ #:assumptions (λ(mem) (bvsle imm (int32 31))))
+
+(verify-eq
+ #:func1 slli
+ #:func2 myslli
+ #:space-on-stack (int32 4)
+ #:r_type false
+ #:assumptions (λ(mem) #t))
+
+(displayln "Verification of Jumps & Branching")
+;TODO
