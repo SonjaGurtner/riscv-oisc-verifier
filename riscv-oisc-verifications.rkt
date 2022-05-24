@@ -87,25 +87,29 @@
 ;;  #:func1 add
 ;;  #:func2 myadd
 ;;  #:space-on-stack (int32 6)
-;;  #:r_type true)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvor
 ;;  #:func2 myor
 ;;  #:space-on-stack (int32 11)
-;;  #:r_type true)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvxor
 ;;  #:func2 myxor
 ;;  #:space-on-stack (int32 11)
-;;  #:r_type true)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvand
 ;;  #:func2 myand
 ;;  #:space-on-stack (int32 11)
-;;  #:r_type true)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
 
 (displayln "Verification of I-Type")
 
@@ -113,40 +117,71 @@
 ;;  #:func1 addi
 ;;  #:func2 myaddi
 ;;  #:space-on-stack (int32 5)
-;;  #:r_type false)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 ori
 ;;  #:func2 myori
 ;;  #:space-on-stack (int32 3)
-;;  #:r_type false)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 xori
 ;;  #:func2 myxori
 ;;  #:space-on-stack (int32 3)
-;;  #:r_type false)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 andi
 ;;  #:func2 myandi
 ;;  #:space-on-stack (int32 3)
 ;;  #:r_type false
-;;#:assumptions (λ(mem) #t))
+;; #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 slli
+;;  #:func2 myslli-safe
+;;  #:space-on-stack (int32 6)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+
+;; (verify-eq
+;;  #:func1 slli
+;;  #:func2 myslli
+;;  #:space-on-stack (int32 4)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 (verify-eq
- #:func1 slli
- #:func2 myslli-safe
- #:space-on-stack (int32 6)
+ #:func1 srli
+ #:func2 mysrli-safe
+ #:space-on-stack (int32 8)
  #:r_type false
- #:assumptions (λ(mem) (bvsle imm (int32 31))))
+ #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+
+;; (verify-eq
+;;  #:func1 srli
+;;  #:func2 mysrli
+;;  #:space-on-stack (int32 4)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 (verify-eq
- #:func1 slli
- #:func2 myslli
- #:space-on-stack (int32 4)
+ #:func1 srai
+ #:func2 mysrai-safe
+ #:space-on-stack (int32 8)
  #:r_type false
- #:assumptions (λ(mem) #t))
+ #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+
+;; (verify-eq
+;;  #:func1 srai
+;;  #:func2 mysrai
+;;  #:space-on-stack (int32 4)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
 
 (displayln "Verification of Jumps & Branching")
 ;TODO
