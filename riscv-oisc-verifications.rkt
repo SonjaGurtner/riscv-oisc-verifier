@@ -111,7 +111,7 @@
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
-(displayln "Verification of I-Type")
+(displayln "\nVerification of I-Type")
 
 ;; (verify-eq
 ;;  #:func1 addi
@@ -142,11 +142,11 @@
 ;; #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
-;;  #:func1 slli
-;;  #:func2 myslli-safe
-;;  #:space-on-stack (int32 6)
-;;  #:r_type false
-;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+ ;; #:func1 slli
+ ;; #:func2 myslli-safe
+ ;; #:space-on-stack (int32 6)
+ ;; #:r_type false
+ ;; #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
 
 ;; (verify-eq
 ;;  #:func1 slli
@@ -155,12 +155,12 @@
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
-(verify-eq
- #:func1 srli
- #:func2 mysrli-safe
- #:space-on-stack (int32 8)
- #:r_type false
- #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+;; (verify-eq
+;;  #:func1 srli
+;;  #:func2 mysrli-safe
+;;  #:space-on-stack (int32 8)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
 ;; (verify-eq
 ;;  #:func1 srli
@@ -169,16 +169,23 @@
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
-(verify-eq
- #:func1 srai
- #:func2 mysrai-safe
- #:space-on-stack (int32 8)
- #:r_type false
- #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+;; (verify-eq
+;;  #:func1 srai
+;;  #:func2 mysrai-safe
+;;  #:space-on-stack (int32 8)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
 ;; (verify-eq
 ;;  #:func1 srai
 ;;  #:func2 mysrai
+;;  #:space-on-stack (int32 4)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 slti
+;;  #:func2 myslti
 ;;  #:space-on-stack (int32 4)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))

@@ -2,7 +2,7 @@
 (require threading)
 (provide (all-defined-out))
 
-(define XLEN 8)
+(define XLEN 16)
 ; int32? is a shorthand for the type (bitvector XLEN).
 (define int32? (bitvector XLEN))
 (define LOOP-LIM 32)
@@ -153,7 +153,7 @@
 (struct op-myslli (rd rs1 imm) #:super struct:instruction)
 (struct op-mysrli (rd rs1 imm) #:super struct:instruction)
 (struct op-mysrai (rd rs1 imm) #:super struct:instruction)
-;(struct op-myslti (rd rs1 imm) #:super struct:instruction)
+(struct op-myslti (rd rs1 imm) #:super struct:instruction)
 ;(struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
 ;TODO jumps and branching
 
@@ -315,9 +315,9 @@
                     (lw t4 (int32 36) sp)
                     (addi t0 x0 (int32 1))
                     (sub t1 x0 x0)
-                    (addi t2 x0 (int32 32))
+                    (addi t2 x0 (int32 XLEN))
                     (sub s1 x0 x0)
-                    (~>>for _ LOOP-LIM
+                    (~>>for _ XLEN
                         (λ(i mem) (eq? (int32 i) (read-register t1 mem)))
                         (slli s1 s1 (int32 1))
                         (slli t5 t3 (int32 1))
@@ -369,9 +369,9 @@
                     (lw t4 (int32 36) sp)
                     (addi t0 x0 (int32 1))
                     (sub t1 x0 x0)
-                    (addi t2 x0 (int32 32))
+                    (addi t2 x0 (int32 XLEN))
                     (sub s1 x0 x0)
-                    (~>>for _ LOOP-LIM
+                    (~>>for _ XLEN
                         (λ(i mem) (eq? (int32 i) (read-register t1 mem)))
                         (slli s1 s1 (int32 1))
                         (slli t5 t3 (int32 1))
@@ -423,9 +423,9 @@
                     (lw t4 (int32 36) sp)
                     (addi t0 x0 (int32 2))
                     (sub t1 x0 x0)
-                    (addi t2 x0 (int32 32))
+                    (addi t2 x0 (int32 XLEN))
                     (sub s1 x0 x0)
-                    (~>>for _ LOOP-LIM
+                    (~>>for _ XLEN
                         (λ(i mem) (eq? (int32 i) (read-register t1 mem)))
                         (slli s1 s1 (int32 1))
                         (slli t5 t3 (int32 1))
@@ -602,7 +602,7 @@
        (sw t5 (int32 20) sp)
        (sw rs1 (int32 24) sp)
        (addi t2 x0 imm)
-       (addi t1 x0 (int32 32))
+       (addi t1 x0 (int32 XLEN))
        (sub t1 t1 t2)
        (sub t2 x0 x0)
        (lw t0 (int32 24) sp)
@@ -622,13 +622,13 @@
           (slli t0 t0 (int32 1))
           (slli t4 t4 (int32 1)))
        (sw t3 (int32 28) sp)
-       ;; (lw t5 (int32 20) sp)
-       ;; (lw t4 (int32 16) sp)
-       ;; (lw t3 (int32 12) sp)
-       ;; (lw t2 (int32 8) sp)
-       ;; (lw t1 (int32 4) sp)
-       ;; (lw t0 (int32 0) sp)
-       ;; (lw rd (int32 28) sp)
+       (lw t5 (int32 20) sp)
+       (lw t4 (int32 16) sp)
+       (lw t3 (int32 12) sp)
+       (lw t2 (int32 8) sp)
+       (lw t1 (int32 4) sp)
+       (lw t0 (int32 0) sp)
+       (lw rd (int32 28) sp)
        (addi sp sp (int32 32))
        (set-pc (cpu-pc mem-state))
        (increment-pc)))
@@ -677,7 +677,7 @@
           (slli t3 t3 (int32 1))
           (add t3 t3 t5)
           (addi t2 t2 (int32 1)))
-       (addi t2 x0 (int32 32))
+       (addi t2 x0 (int32 XLEN))
        (sub t1 t2 t1)
        (sub t2 t2 t2)
        (~>>for-break _ LOOP-LIM
@@ -702,6 +702,24 @@
        (addi sp sp (int32 32))
        (set-pc (cpu-pc mem-state))
        (increment-pc)))
+
+(define (myslti rd rs1 imm mem-state)
+  (~>> mem-state
+       (addi sp sp (int32 -16))
+       (sw t0 (int32 0) sp)
+       (sw t1 (int32 4) sp)
+       (sw rs1 (int32 8) sp)
+       (lw t1 (int32 8) sp)
+       (addi t0 x0 imm)
+       (slt rd t1 t0)
+       (sw rd (int32 12) sp)
+       (lw t1 (int32 4) sp)
+       (lw t0 (int32 0) sp)
+       (lw rd (int32 12) sp)
+       (addi sp sp (int32 16))
+       (set-pc (cpu-pc mem-state))
+       (increment-pc)))
+
 
 ;============== Memory
 ;============== B, J, U - Types
@@ -752,7 +770,7 @@
     [(op-myslli rd rs1 imm) (myslli rd rs1 imm mem-state)]
     [(op-mysrli rd rs1 imm) (mysrli rd rs1 imm mem-state)]
     [(op-mysrai rd rs1 imm) (mysrai rd rs1 imm mem-state)]
-    ;[(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-state)]
+    [(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-state)]
     ;; [(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-state)]
     ;TODO B, J, U
     ))
