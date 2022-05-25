@@ -72,7 +72,8 @@
               (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))
             (displayln "Memory (Stack) after Execution:")
             (for ([k (range 64)] [i (evaluate (cpu-stack mem1-after) cex)] [j (evaluate (cpu-stack mem2-after) cex)])
-              (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT")))))))))
+              (when (< k (bitvector->integer (read-register sp mem1-after)))
+                (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))))))))
 
 (display "====Verify equality of instructions\n")
 ;(require rosette/solver/smt/cvc4)
@@ -86,28 +87,42 @@
 ;; (verify-eq
 ;;  #:func1 add
 ;;  #:func2 myadd
-;;  #:space-on-stack (int32 6)
+;;  #:space-on-stack (int32 5)
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvor
 ;;  #:func2 myor
-;;  #:space-on-stack (int32 11)
+;;  #:space-on-stack (int32 10)
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvxor
 ;;  #:func2 myxor
-;;  #:space-on-stack (int32 11)
+;;  #:space-on-stack (int32 10)
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 rvand
 ;;  #:func2 myand
-;;  #:space-on-stack (int32 11)
+;;  #:space-on-stack (int32 10)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 sll
+;;  #:func2 mysll-safe
+;;  #:space-on-stack (int32 6)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
+
+;; (verify-eq
+;;  #:func1 sll
+;;  #:func2 mysll
+;;  #:space-on-stack (int32 4)
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
@@ -116,7 +131,7 @@
 ;; (verify-eq
 ;;  #:func1 addi
 ;;  #:func2 myaddi
-;;  #:space-on-stack (int32 5)
+;;  #:space-on-stack (int32 4)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
@@ -142,44 +157,44 @@
 ;; #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
- ;; #:func1 slli
- ;; #:func2 myslli-safe
- ;; #:space-on-stack (int32 6)
- ;; #:r_type false
- ;; #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+;;  #:func1 slli
+;;  #:func2 myslli-safe
+;;  #:space-on-stack (int32 5)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
 
 ;; (verify-eq
 ;;  #:func1 slli
 ;;  #:func2 myslli
-;;  #:space-on-stack (int32 4)
+;;  #:space-on-stack (int32 3)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 srli
 ;;  #:func2 mysrli-safe
-;;  #:space-on-stack (int32 8)
+;;  #:space-on-stack (int32 7)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
 ;; (verify-eq
 ;;  #:func1 srli
 ;;  #:func2 mysrli
-;;  #:space-on-stack (int32 4)
+;;  #:space-on-stack (int32 3)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
 ;; (verify-eq
 ;;  #:func1 srai
 ;;  #:func2 mysrai-safe
-;;  #:space-on-stack (int32 8)
+;;  #:space-on-stack (int32 7)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
 ;; (verify-eq
 ;;  #:func1 srai
 ;;  #:func2 mysrai
-;;  #:space-on-stack (int32 4)
+;;  #:space-on-stack (int32 3)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
