@@ -126,6 +126,34 @@
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
+;; (verify-eq
+;;  #:func1 srl
+;;  #:func2 mysrl-safe
+;;  #:space-on-stack (int32 8)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
+
+;; (verify-eq
+;;  #:func1 srl
+;;  #:func2 mysrl
+;;  #:space-on-stack (int32 4)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 sra
+;;  #:func2 mysra-safe
+;;  #:space-on-stack (int32 8)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)) (bvsle (read-register rs2 mem) (int32 XLEN)))))
+
+;; (verify-eq
+;;  #:func1 sra
+;;  #:func2 mysra
+;;  #:space-on-stack (int32 4)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
+
 (displayln "\nVerification of I-Type")
 
 ;; (verify-eq
