@@ -186,7 +186,7 @@
 (define (increment-pc mem-state)
   (cpu (bvadd (int32 4) (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
-; convert the pc to the index which can be used to fetch the respective instruction from the test program
+; convert the sp and offset to the index of the respective position in the stack
 (define (convert-sp-index rd offset mem-state)
   (bvsub (bvlshr (bvsub (bvneg (read-register rd mem-state)) offset) (int32 2)) (int32 1)))
 
@@ -999,12 +999,12 @@
        (srli t0 t0 (int32 1))
        (srli t1 t1 (int32 1))
        (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
-                (lw t0 (int32 12) sp)
-                (addi t1 x0 imm)
-                (slli t0 t0 (int32 1))
-                (srli t0 t0 (int32 1))
-                (slli t1 t1 (int32 1))
-                (srli t1 t1 (int32 1)))
+           (lw t0 (int32 12) sp)
+           (addi t1 x0 imm)
+           (slli t0 t0 (int32 1))
+           (srli t0 t0 (int32 1))
+           (slli t1 t1 (int32 1))
+           (srli t1 t1 (int32 1)))
        (slt t2 t0 t1)
        (sw t2 (int32 12) sp)
        (lw t2 (int32 8) sp)
@@ -1027,10 +1027,55 @@
       (beq x0 x0 imm mem-state)))
 
 (define (mybltu rs1 rs2 imm mem-state)
- mem-state)
+ (~>> mem-state
+       (addi sp sp (int32 -16))
+       (sw t0 (int32 0) sp)
+       (sw t1 (int32 4) sp)
+       (sw rs1 (int32 8) sp)
+       (sw rs2 (int32 12) sp)
+       (lw t0 (int32 8) sp)
+       (lw t1 (int32 12) sp)
+       (srli t0 t0 (int32 1))
+       (srli t1 t1 (int32 1))
+       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+           (~>> _
+                (lw t0 (int32 8) sp)
+                (lw t1 (int32 12) sp)
+                (slli t0 t0 (int32 1))
+                (srli t0 t0 (int32 1))
+                (slli t1 t1 (int32 1))
+                (srli t1 t1 (int32 1))
+                (~>>if-else _ (λ(mem) (bvslt (read-register t0 mem) (read-register t1 mem)))
+                    (~>>  _
+                        (lw t1 (int32 4) sp)
+                         (lw t0 (int32 0) sp)
+                         (addi sp sp (int32 16))
+                         (set-pc (cpu-pc mem-state))
+                         (beq x0 x0 imm))
+                    (~>> _
+                         (lw t1 (int32 4) sp)
+                         (lw t0 (int32 0) sp)
+                         (addi sp sp (int32 16))
+                         (set-pc (cpu-pc mem-state))
+                         (increment-pc))))
+           (~>>if-else _ (λ(mem) (bvslt (read-register t0 mem) (read-register t1 mem)))
+               (~>> _
+                    (lw t1 (int32 4) sp)
+                    (lw t0 (int32 0) sp)
+                    (addi sp sp (int32 16))
+                    (set-pc (cpu-pc mem-state))
+                    (beq x0 x0 imm))
+               (~>>  _
+                     (lw t1 (int32 4) sp)
+                     (lw t0 (int32 0) sp)
+                     (addi sp sp (int32 16))
+                     (set-pc (cpu-pc mem-state))
+                     (increment-pc))))))
 
 (define (mybgeu rs1 rs2 imm mem-state)
-  mem-state)
+  (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (increment-pc mem-state)
+      (beq x0 x0 imm mem-state)))
 
 (define (myjal rd imm mem-state)
   (~>> mem-state

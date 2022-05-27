@@ -39,9 +39,9 @@
    (begin
      (assume
       (and
-       (bvslt (bvneg (read-register sp test1-mem)) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       ;(bvsge (read-register sp test1-mem) (int32 -10000)) ;; not really useful except for excluding (bv #x80000000 32) whose negation is negative too...
-       (bveq (read-register sp test1-mem) (int32 0))
+       ;(bvsle (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvslt (read-register sp test1-mem) (int32 0))
        (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-src-reg rs1)
@@ -57,9 +57,9 @@
    (begin
      (assume
       (and
-       (bvslt (bvneg (read-register sp test1-mem)) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       ;(bvsge (read-register sp test1-mem) (int32 -10000)) ;; not really useful except for excluding (bv #x80000000 32) whose negation is negative too...
-       (bveq (read-register sp test1-mem) (int32 0))
+       ;(bvsle (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvslt (read-register sp test1-mem) (int32 0))
        (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-src-reg rs1)
@@ -74,9 +74,9 @@
    (begin
      (assume
       (and
-       (bvslt (bvneg (read-register sp test1-mem)) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       ;(bvsge (read-register sp test1-mem) (int32 -10000)) ;; not really useful except for excluding (bv #x80000000 32) whose negation is negative too...
-       (bveq (read-register sp test1-mem) (int32 0))
+       ;(bvslt (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvslt (read-register sp test1-mem) (int32 0))
        (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-dest-reg rd)
@@ -338,12 +338,26 @@
 ;;  #:i_type true
 ;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;TODO
+(verify-eq
+ #:func1 bltu
+ #:func2 mybltu
+ #:space-on-stack (int32 4)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;; (verify-eq
-;;  #:func1 jal
-;;  #:func2 myjal
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type false
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:func1 bgeu
+ #:func2 mybgeu
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+
+(verify-eq
+ #:func1 jal
+ #:func2 myjal
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type false
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
