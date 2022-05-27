@@ -133,7 +133,14 @@
 (struct op-sltiu (rd rs1 imm) #:super struct:instruction)
 (struct op-lw (rd imm rs1) #:super struct:instruction)
 (struct op-sw (rs1 imm rs2) #:super struct:instruction)
-;TODO branching and jumps
+(struct op-beq (rs1 rs2 imm) #:super struct:instruction)
+(struct op-bne (rs1 rs2 imm) #:super struct:instruction)
+(struct op-blt (rs1 rs2 imm) #:super struct:instruction)
+(struct op-bge (rs1 rs2 imm) #:super struct:instruction)
+(struct op-bltu (rs1 rs2 imm) #:super struct:instruction)
+(struct op-bgeu (rs1 rs2 imm) #:super struct:instruction)
+(struct op-jal (rd imm) #:super struct:instruction)
+(struct op-jalr (rd rs1 imm) #:super struct:instruction)
 (struct op-lui (rd imm) #:super struct:instruction)
 (struct op-auipc (rd imm) #:super struct:instruction)
 
@@ -156,7 +163,11 @@
 (struct op-mysrai (rd rs1 imm) #:super struct:instruction)
 (struct op-myslti (rd rs1 imm) #:super struct:instruction)
 (struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
-;TODO jumps and branching
+(struct op-mybne (rs1 rs2 imm) #:super struct:instruction)
+(struct op-mybge (rs1 rs2 imm) #:super struct:instruction)
+(struct op-mybltu (rs1 rs2 imm) #:super struct:instruction)
+(struct op-mybgeu (rs1 rs2 imm) #:super struct:instruction)
+(struct op-myjal (rd imm) #:super struct:instruction)
 
 ;========================= Auxiliary Methods
 ; read and return the value of a register
@@ -171,7 +182,7 @@
 (define (increment-register rd val mem-state)
   (write-register rd (bvadd (read-register rd mem-state) val) mem-state))
 
-; increment the pc by 4
+; increment the pc by 4, goes to next instruction
 (define (increment-pc mem-state)
   (cpu (bvadd (int32 4) (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
@@ -244,6 +255,55 @@
 (define (sltiu rd rs1 imm mem-state)
   (increment-pc (write-register rd (if (bvult (read-register rs1 mem-state) imm) (int32 1) (int32 0)) mem-state)))
 
+;============== Jumps and Branching
+(define (beq rs1 rs2 imm mem-state)
+  (if (bveq (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (bne rs1 rs2 imm mem-state)
+  (if (not (bveq (read-register rs1 mem-state) (read-register rs2 mem-state)))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (blt rs1 rs2 imm mem-state)
+    (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (bge rs1 rs2 imm mem-state)
+    (if (bvsge (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (bltu rs1 rs2 imm mem-state)
+    (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (bgeu rs1 rs2 imm mem-state)
+    (if (bvuge (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
+      (increment-pc mem-state)))
+
+(define (jal rd imm mem-state)
+  (~>> mem-state
+       (addi rd x0 (cpu-pc))
+       (addi rd rd (int32 4))
+       (set-pc (bvadd (cpu-pc mem-state) imm))))
+
+(define (jalr rd rs1 imm mem-state)
+  (~>> mem-state
+       (addi rd x0 (cpu-pc mem-state))
+       (addi rd rd (int32 4))
+       (set-pc (bvadd (read-register rs1) imm))))
+
+(define (lui rd imm mem-state)
+  (increment-pc (write-register rd (bvshl imm (int32 12)) mem-state)))
+
+(define (auipc rd imm mem-state)
+  (increment-pc (write-register rd (bvadd (cpu-pc mem-state) (bvshl imm (int32 12))) mem-state)))
+
 ;============== Memory
 (define (lw rd imm rs1 mem-state)
   (let ([ind (convert-sp-index rs1 imm mem-state)])
@@ -261,15 +321,6 @@
       (cpu-pc mem-state)
       (cpu-registers mem-state)
       (list-set-bv (cpu-stack mem-state) ind (read-register rs1 mem-state))))))
-
-;============== B, J, U - Types
-;TODO branching
-
-(define (lui rd imm mem-state)
-  (increment-pc (write-register rd (bvshl imm (int32 12)) mem-state)))
-
-(define (auipc rd imm mem-state)
-  (increment-pc (write-register rd (bvadd (cpu-pc mem-state) (bvshl imm (int32 12))) mem-state)))
 
 ;========================= Replaced Instructions
 ;============== R-Type
@@ -964,8 +1015,25 @@
        (set-pc (cpu-pc mem-state))
        (increment-pc)))
 
-;============== Memory
-;============== B, J, U - Types
+;============== Jumps and Branching
+(define (mybne rs1 rs2 imm mem-state)
+  (if (bveq (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (increment-pc mem-state)
+      (beq x0 x0 imm mem-state)))
+
+(define (mybge rs1 rs2 imm mem-state)
+  (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state))
+      (increment-pc mem-state)
+      (beq x0 x0 imm mem-state)))
+
+(define (mybltu rs1 rs2 imm mem-state)
+ mem-state)
+
+(define (mybgeu rs1 rs2 imm mem-state)
+  mem-state)
+
+(define (myjal rd imm mem-state)
+  mem-state)
 
 ;========================= Main Functions
 
@@ -993,7 +1061,14 @@
     [(op-sltiu rd rs1 imm) (sltiu rd rs1 imm mem-state)]
     [(op-lw rd imm rs1) (lw rd imm rs1 mem-state)]
     [(op-sw rs1 imm rd) (sw rs1 imm rd mem-state)]
-    ;TODO B, J , U
+    [(op-beq rs1 rs2 imm) (beq rs1 rs2 imm mem-state)]
+    [(op-bne rs1 rs2 imm) (bne rs1 rs2 imm mem-state)]
+    [(op-blt rs1 rs2 imm) (blt rs1 rs2 imm mem-state)]
+    [(op-bge rs1 rs2 imm) (bne rs1 rs2 imm mem-state)]
+    [(op-bltu rs1 rs2 imm) (blt rs1 rs2 imm mem-state)]
+    [(op-bgeu rs1 rs2 imm) (bne rs1 rs2 imm mem-state)]
+    [(op-jal rd imm) (jal rd imm mem-state)]
+    [(op-jalr rd rs1 imm) (jalr rd rs1 imm mem-state)]
     [(op-lui rd imm) (lui rd imm mem-state)]
     [(op-auipc rd imm) (auipc rd imm mem-state)]
     ; Replaced Instructions
@@ -1015,8 +1090,11 @@
     [(op-mysrai rd rs1 imm) (mysrai rd rs1 imm mem-state)]
     [(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-state)]
     [(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-state)]
-    ;TODO B, J, U
-    ))
+    [(op-mybne rs1 rs2 imm) (mybne rs1 rs2 imm mem-state)]
+    [(op-mybge rs1 rs2 imm) (mybge rs1 rs2 imm mem-state)]
+    [(op-mybltu rs1 rs2 imm) (mybltu rs1 rs2 imm mem-state)]
+    [(op-mybgeu rs1 rs2 imm) (mybgeu rs1 rs2 imm mem-state)]
+    [(op-myjal rd imm) (myjal rd imm mem-state)]))
 
 (define-bounded (execute-program instructions mem-state)
   (let ([pc (cpu-pc mem-state)] [len (length-bv instructions (bitvector XLEN))])

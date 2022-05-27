@@ -67,6 +67,7 @@
           (for ([k (range 32)] [i (evaluate (cpu-registers test1-mem) cex)])
             (displayln (format "x~a ~a" k i)))
           (let ([mem1-after (evaluate (func1 rd rs1 (if r_type rs2 imm) test1-mem) cex)] [mem2-after (evaluate (func2 rd rs1 (if r_type rs2 imm) test2-mem) cex)])
+            (displayln (format "PC: ~a \t ~a" (evaluate (cpu-pc mem1-after) cex) (evaluate (cpu-pc mem2-after) cex)))
             (displayln (format "Memory after Execution of ~a and ~a:" func1 func2))
             (for ([k (range 32)] [i (evaluate (cpu-registers mem1-after) cex)] [j (evaluate (cpu-registers mem2-after) cex)])
               (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))
@@ -254,5 +255,18 @@
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))
 
-(displayln "Verification of Jumps & Branching")
-;TODO
+(displayln "\nVerification of Jumps & Branching")
+
+(verify-eq
+ #:func1 bne
+ #:func2 mybne
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+
+(verify-eq
+ #:func1 bge
+ #:func2 mybge
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
