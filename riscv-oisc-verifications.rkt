@@ -39,10 +39,10 @@
    (begin
      (assume
       (and
-       ;(bvsle (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
-       (bvslt (read-register sp test1-mem) (int32 0))
-       (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
+       (bvslt (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvadd (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvsle (read-register sp test1-mem) (int32 0))
+       (bveq (bvsmod (read-register sp test1-mem) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-src-reg rs1)
        (valid-src-reg rs2)
@@ -57,10 +57,10 @@
    (begin
      (assume
       (and
-       ;(bvsle (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
-       (bvslt (read-register sp test1-mem) (int32 0))
-       (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
+       (bvslt (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvadd (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvsle (read-register sp test1-mem) (int32 0))
+       (bveq (bvsmod (read-register sp test1-mem) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-src-reg rs1)
        (valid-dest-reg rd)
@@ -74,10 +74,10 @@
    (begin
      (assume
       (and
-       ;(bvslt (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
-       (bvsge (read-register sp test1-mem) (bvsub (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
-       (bvslt (read-register sp test1-mem) (int32 0))
-       (bveq (bvsmod (bvneg (read-register sp test1-mem)) (int32 4)) (int32 0))
+       (bvslt (convert-sp-index sp (int32 0) test1-mem) (bvsub (length-bv (cpu-stack test1-mem) (bitvector XLEN)) space))
+       (bvsge (read-register sp test1-mem) (bvadd (bvshl (int32 1) (int32 (- XLEN 1))) (int32 1)))
+       (bvsle (read-register sp test1-mem) (int32 0))
+       (bveq (bvsmod (read-register sp test1-mem) (int32 4)) (int32 0))
        (bveq (bvsmod (cpu-pc  test1-mem) (int32 4)) (int32 0))
        (valid-dest-reg rd)
        (eq-mem-state test1-mem test2-mem)))
@@ -101,23 +101,23 @@
                                               test2-r1 test2-r2 test2-r3 test2-r4 test2-r5 test2-r6 test2-r7 test2-r8 test2-r9 test2-r10 test2-r11 test2-r12 test2-r13 test2-r14 test2-r15 test2-r16 test2-r17 test2-r18 test2-r19 test2-r20 test2-r21 test2-r22 test2-r23 test2-r24 test2-r25 test2-r26 test2-r27 test2-r28 test2-r29 test2-r30 test2-r31
                                               test2-mem0 test2-mem1 test2-mem2 test2-mem3 test2-mem4 test2-mem5 test2-mem6 test2-mem7 test2-mem8 test2-mem9 test2-mem10 test2-mem11 test2-mem12 test2-mem13 test2-mem14 test2-mem15 test2-mem16 test2-mem17 test2-mem18 test2-mem19 test2-mem20 test2-mem21 test2-mem22 test2-mem23 test2-mem24 test2-mem25 test2-mem26 test2-mem27 test2-mem28 test2-mem29 test2-mem30 test2-mem31))])
             (displayln (format "FAIL ~a\n==> ~a ms" (first m) real-milli))
-          (displayln (format "Arguments ~a" (evaluate (list (bitvector->integer rd) (bitvector->integer rs1) (bitvector->integer (if r_type rs2 imm))) cex)))
-          (displayln "Memory before Execution")
-          (for ([k (range 32)] [i (evaluate (cpu-registers test1-mem) cex)])
-            (displayln (format "x~a ~a" k i)))
-          (let
-              ([mem1-after (evaluate (if r_type (func1 rd rs1 rs2 test1-mem) (if i_type (func1 rd rs1 imm test1-mem) (func1 rd imm test1-mem))) cex)]
-                [mem2-after (evaluate (if r_type (func2 rd rs1 rs2 test2-mem) (if i_type (func2 rd rs1 imm test2-mem) (func2 rd imm test2-mem))) cex)])
-              (displayln (format "PC: ~a \t ~a" (evaluate (cpu-pc mem1-after) cex) (evaluate (cpu-pc mem2-after) cex)))
-            (displayln (format "Memory after Execution of ~a and ~a:" func1 func2))
-            (for ([k (range 32)] [i (evaluate (cpu-registers mem1-after) cex)] [j (evaluate (cpu-registers mem2-after) cex)])
-              (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))
-            (displayln "Memory (Stack) after Execution:")
-            (for ([k (range 64)] [i (evaluate (cpu-stack mem1-after) cex)] [j (evaluate (cpu-stack mem2-after) cex)])
-              (when (< k (bitvector->integer (read-register sp mem1-after)))
-                (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))))))))
+            (displayln (format "Arguments ~a" (evaluate (list (bitvector->integer rd) (bitvector->integer rs1) (bitvector->integer (if r_type rs2 imm))) cex)))
+            (displayln "Memory before Execution")
+            (for ([k (range 32)] [i (evaluate (cpu-registers test1-mem) cex)])
+              (displayln (format "x~a ~a" k i)))
+            (let
+                ([mem1-after (evaluate (if r_type (func1 rd rs1 rs2 test1-mem) (if i_type (func1 rd rs1 imm test1-mem) (func1 rd imm test1-mem))) cex)]
+                  [mem2-after (evaluate (if r_type (func2 rd rs1 rs2 test2-mem) (if i_type (func2 rd rs1 imm test2-mem) (func2 rd imm test2-mem))) cex)])
+                (displayln (format "PC: ~a \t ~a" (evaluate (cpu-pc mem1-after) cex) (evaluate (cpu-pc mem2-after) cex)))
+              (displayln (format "Memory after Execution of ~a and ~a:" func1 func2))
+              (for ([k (range 32)] [i (evaluate (cpu-registers mem1-after) cex)] [j (evaluate (cpu-registers mem2-after) cex)])
+                (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))
+              (displayln "Memory (Stack) after Execution:")
+              (for ([k (range 64)] [i (evaluate (cpu-stack mem1-after) cex)] [j (evaluate (cpu-stack mem2-after) cex)])
+                (when (< k (bitvector->integer (read-register sp mem1-after)))
+                  (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))))))))
 
-(display "====Verify equality of instructions\n")
+(display (format "====Verify equality of instructions (bit length: ~a)\n" XLEN))
 ;(require rosette/solver/smt/cvc4)
 ;(require rosette/solver/smt/boolector)
 ;;(current-solver (cvc4 #:path "/home/zmaths/.isabelle/contrib/cvc4-1.8/x86_64-linux/cvc4"))
@@ -128,8 +128,7 @@
 
 ;; (verify-eq
 ;;  #:func1 add
-;;  #:func2 myadd
-;;  #:space-on-stack (int32 5)
+;;  #:func2 myadd #:space-on-stack (int32 5)
 ;;  #:r_type true
 ;;  #:i_type false
 ;;  #:assumptions (λ(mem) #t))
@@ -338,26 +337,26 @@
 ;;  #:i_type true
 ;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-(verify-eq
- #:func1 bltu
- #:func2 mybltu
- #:space-on-stack (int32 4)
- #:r_type false
- #:i_type true
- #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+;; (verify-eq
+;;  #:func1 bltu
+;;  #:func2 mybltu
+;;  #:space-on-stack (int32 4)
+;;  #:r_type false
+;;  #:i_type true
+;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-(verify-eq
- #:func1 bgeu
- #:func2 mybgeu
- #:space-on-stack (int32 0)
- #:r_type false
- #:i_type true
- #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+;; (verify-eq
+;;  #:func1 bgeu
+;;  #:func2 mybgeu
+;;  #:space-on-stack (int32 0)
+;;  #:r_type false
+;;  #:i_type true
+;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-(verify-eq
- #:func1 jal
- #:func2 myjal
- #:space-on-stack (int32 3)
- #:r_type false
- #:i_type false
- #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+;; (verify-eq
+;;  #:func1 jal
+;;  #:func2 myjal
+;;  #:space-on-stack (int32 3)
+;;  #:r_type false
+;;  #:i_type false
+;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))

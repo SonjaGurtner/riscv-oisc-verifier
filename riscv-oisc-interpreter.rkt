@@ -2,7 +2,7 @@
 (require threading)
 (provide (all-defined-out))
 
-(define XLEN 8)
+(define XLEN 16)
 ; int32? is a shorthand for the type (bitvector XLEN).
 (define int32? (bitvector XLEN))
 ; Some loops need a limit higher than XLEN(i.e. right shift)
