@@ -288,7 +288,7 @@
 
 (define (jal rd imm mem-state)
   (~>> mem-state
-       (addi rd x0 (cpu-pc))
+       (addi rd x0 (cpu-pc mem-state))
        (addi rd rd (int32 4))
        (set-pc (bvadd (cpu-pc mem-state) imm))))
 
@@ -1033,7 +1033,22 @@
   mem-state)
 
 (define (myjal rd imm mem-state)
-  mem-state)
+  (~>> mem-state
+       (addi sp sp (int32 -12))
+       (sw t0 (int32 0) sp)
+       (sw t1 (int32 4) sp)
+       (set-pc (cpu-pc mem-state))
+       (auipc t1 (int32 0))
+       (addi t0 x0 (int32 4))
+       (sub t0 x0 t0)
+       (sub t1 t1 t0)
+       (sw t1 (int32 8) sp)
+       (lw t1 (int32 4) sp)
+       (lw t0 (int32 0) sp)
+       (lw rd (int32 8) sp)
+       (addi sp sp (int32 12))
+       (set-pc (cpu-pc mem-state))
+       (beq x0 x0 imm)))
 
 ;========================= Main Functions
 
