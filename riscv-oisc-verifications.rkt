@@ -154,6 +154,20 @@
 ;;  #:r_type true
 ;;  #:assumptions (λ(mem) #t))
 
+;; (verify-eq
+;;  #:func1 slt
+;;  #:func2 myslt
+;;  #:space-on-stack (int32 0)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 sltu
+;;  #:func2 mysltu
+;;  #:space-on-stack (int32 5)
+;;  #:r_type true
+;;  #:assumptions (λ(mem) #t))
+
 (displayln "\nVerification of I-Type")
 
 ;; (verify-eq
@@ -229,6 +243,13 @@
 ;; (verify-eq
 ;;  #:func1 slti
 ;;  #:func2 myslti
+;;  #:space-on-stack (int32 3)
+;;  #:r_type false
+;;  #:assumptions (λ(mem) #t))
+
+;; (verify-eq
+;;  #:func1 sltiu
+;;  #:func2 mysltiu
 ;;  #:space-on-stack (int32 4)
 ;;  #:r_type false
 ;;  #:assumptions (λ(mem) #t))

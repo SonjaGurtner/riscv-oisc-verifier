@@ -5,17 +5,16 @@
 ;######################################### Test-Programs
 ;cpu memory, can be extended if more space needed
 (define test-cpu (cpu (int32 0)
-                  (list (int32 0) (int32 192) (int32 0) (int32 9) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
+                  (list (int32 0) (int32 4) (int32 0) (int32 5) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))
                   (list (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0) (int32 0))))
 
 ;Test-Program 1
-(define program1 (list (op-sra x4 x1 x3)))
+(define program1 (list (op-sltu x4 x1 x3)))
 (define memory1 (execute-program program1 test-cpu))
 
 ;Test-Program 2
-;(define program2 (list (op-mysrli x3 x1 (int32 28))))
-;(define memory2 (execute-program program2 test-cpu))
-(define memory2 (mysra-safe x4 x1 x3 test-cpu))
+(define program2 (list (op-mysltu x4 x1 x3)))
+(define memory2 (execute-program program2 test-cpu))
 
 ;comparing stack only works if program doesn't allocate memory that it doesn't use
 (displayln "====== Test Memory before execution")

@@ -5,9 +5,10 @@
 (define XLEN 8)
 ; int32? is a shorthand for the type (bitvector XLEN).
 (define int32? (bitvector XLEN))
+; Some loops need a limit higher than XLEN(i.e. right shift)
 (define LOOP-LIM 32)
 
-; int32 takes as input an integer literal and returns the corresponding bitvector
+; int32 takes as input an integer literal and returns the corresponding value as bitvector of length XLEN
 (define (int32 i)
   (bv i int32?))
 
@@ -67,9 +68,9 @@
              (set! x (~>> x body2)))
          x)))))
 
-; For debugging purposes, use with (read_and_print_value t1 _)
-(define (read_and_print_value rs1 mem-state)
-  (display (read-register rs1 mem-state))
+; For debugging purposes
+(define (read-and-print-value str rs1 mem-state)
+  (display (format "~a ~a" str (read-register rs1 mem-state)))
   mem-state)
 
 ;========================= Define Memory, Register Indices, CPU
@@ -144,8 +145,8 @@
 (struct op-mysll (rd rs1 rs2) #:super struct:instruction)
 (struct op-mysrl (rd rs1 rs2) #:super struct:instruction)
 (struct op-mysra (rd rs1 rs2) #:super struct:instruction)
-;(struct op-myslt (rd rs1 rs2) #:super struct:instruction)
-;(struct op-mysltu (rd rs1 rs2) #:super struct:instruction)
+(struct op-myslt (rd rs1 rs2) #:super struct:instruction)
+(struct op-mysltu (rd rs1 rs2) #:super struct:instruction)
 (struct op-myaddi (rd rs1 imm) #:super struct:instruction)
 (struct op-myxori (rd rs1 imm) #:super struct:instruction)
 (struct op-myori (rd rs1 imm) #:super struct:instruction)
@@ -154,7 +155,7 @@
 (struct op-mysrli (rd rs1 imm) #:super struct:instruction)
 (struct op-mysrai (rd rs1 imm) #:super struct:instruction)
 (struct op-myslti (rd rs1 imm) #:super struct:instruction)
-;(struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
+(struct op-mysltiu (rd rs1 imm) #:super struct:instruction)
 ;TODO jumps and branching
 
 ;========================= Auxiliary Methods
@@ -635,6 +636,41 @@
        (set-pc (cpu-pc mem-state))
        (increment-pc)))
 
+(define (myslt rd rs1 rs2 mem-state)
+  (~>> mem-state
+       (~>>if-else _ (λ(mem) (bvslt (read-register rs1 mem) (read-register rs2 mem))) (addi rd x0 (int32 1)) (sub rd x0 x0))
+       (set-pc (cpu-pc mem-state))
+       (increment-pc)))
+
+(define (mysltu rd rs1 rs2 mem-state)
+ (~>> mem-state
+       (addi sp sp (int32 -20))
+       (sw t0 (int32 0) sp)
+       (sw t1 (int32 4) sp)
+       (sw t2 (int32 8) sp)
+       (sw rs1 (int32 12) sp)
+       (sw rs2 (int32 16) sp)
+       (lw t0 (int32 12) sp)
+       (lw t1 (int32 16) sp)
+       (srli t0 t0 (int32 1))
+       (srli t1 t1 (int32 1))
+       (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+                (lw t0 (int32 12) sp)
+                (lw  t1 (int32 16) sp)
+                (slli t0 t0 (int32 1))
+                (srli t0 t0 (int32 1))
+                (slli t1 t1 (int32 1))
+                (srli t1 t1 (int32 1)))
+       (slt t2 t0 t1)
+       (sw t2 (int32 16) sp)
+       (lw t2 (int32 8) sp)
+       (lw t1 (int32 4) sp)
+       (lw t0 (int32 0) sp)
+       (lw rd (int32 16) sp)
+       (addi sp sp (int32 20))
+       (set-pc (cpu-pc mem-state))
+       (increment-pc)))
+
 ;============== I-Type
 (define (myaddi rd rs1 imm mem-state)
   (~>> mem-state
@@ -900,6 +936,33 @@
        (set-pc (cpu-pc mem-state))
        (increment-pc)))
 
+(define (mysltiu rd rs1 imm mem-state)
+ (~>> mem-state
+       (addi sp sp (int32 -16))
+       (sw t0 (int32 0) sp)
+       (sw t1 (int32 4) sp)
+       (sw t2 (int32 8) sp)
+       (sw rs1 (int32 12) sp)
+       (lw t0 (int32 12) sp)
+       (addi t1 x0 imm)
+       (srli t0 t0 (int32 1))
+       (srli t1 t1 (int32 1))
+       (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+                (lw t0 (int32 12) sp)
+                (addi t1 x0 imm)
+                (slli t0 t0 (int32 1))
+                (srli t0 t0 (int32 1))
+                (slli t1 t1 (int32 1))
+                (srli t1 t1 (int32 1)))
+       (slt t2 t0 t1)
+       (sw t2 (int32 12) sp)
+       (lw t2 (int32 8) sp)
+       (lw t1 (int32 4) sp)
+       (lw t0 (int32 0) sp)
+       (lw rd (int32 12) sp)
+       (addi sp sp (int32 16))
+       (set-pc (cpu-pc mem-state))
+       (increment-pc)))
 
 ;============== Memory
 ;============== B, J, U - Types
@@ -941,8 +1004,8 @@
     [(op-mysll rd rs1 rs2) (mysll rd rs1 rs2 mem-state)]
     [(op-mysrl rd rs1 rs2) (mysrl rd rs1 rs2 mem-state)]
     [(op-mysra rd rs1 rs2) (mysra rd rs1 rs2 mem-state)]
-    ;; [(op-myslt rd rs1 rs2) (myslt rd rs1 rs2 mem-state)]
-    ;; [(op-mysltu rd rs1 rs2) (mysltu rd rs1 rs2 mem-state)]
+    [(op-myslt rd rs1 rs2) (myslt rd rs1 rs2 mem-state)]
+    [(op-mysltu rd rs1 rs2) (mysltu rd rs1 rs2 mem-state)]
     [(op-myaddi rd rs1 imm) (myaddi rd rs1 imm mem-state)]
     [(op-myxori rd rs1 imm) (myxori rd rs1 imm mem-state)]
     [(op-myori rd rs1 imm) (myori rd rs1 imm mem-state)]
@@ -951,7 +1014,7 @@
     [(op-mysrli rd rs1 imm) (mysrli rd rs1 imm mem-state)]
     [(op-mysrai rd rs1 imm) (mysrai rd rs1 imm mem-state)]
     [(op-myslti rd rs1 imm) (myslti rd rs1 imm mem-state)]
-    ;; [(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-state)]
+    [(op-mysltiu rd rs1 imm) (mysltiu rd rs1 imm mem-state)]
     ;TODO B, J, U
     ))
 
@@ -959,7 +1022,6 @@
   (let ([pc (cpu-pc mem-state)] [len (length-bv instructions (bitvector XLEN))])
     (cond
       [(bvslt (bvlshr pc (int32 2)) len)
-       (display (bvlshr pc (int32 2)))
        (execute-program instructions (execute-instruction (list-ref-bv instructions (bvlshr pc (int32 2))) mem-state))]
       [else mem-state])))
 
