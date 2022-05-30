@@ -85,11 +85,12 @@
               (func1 rd imm test1-mem)
               (func2 rd imm test2-mem))))))
 
-(define-syntax-rule (verify-eq #:func1 func1 #:func2 func2 #:space-on-stack space #:r_type r_type #:i_type i_type #:assumptions assumptions)
-  (begin
-    (displayln (format "Verifying equality of ~a and ~a" func1 func2))
+(define-syntax-rule (verify-eq #:name name #:func1 func1 #:func2 func2 #:space-on-stack space #:r_type r_type #:i_type i_type #:assumptions assumptions)
+  (let ([my-file (open-output-file #:exists 'append #:mode 'text (format "/home/sonja/GitHub/riscv-oisc-verifier/benchmarks/~a.dat" name))])
+    (displayln (format "Verifying equality of ~a: ~a and ~a" name func1 func2))
     (define-values (m milli real-milli cpu-time)
       (time-apply (λ () (begin (assume (assumptions test1-mem)) (if r_type (verify-func-r func1 func2 space) (if i_type (verify-func-i func1 func2 space) (verify-func-j func1 func2 space))))) '()))
+    (fprintf my-file "(~a, ~a)\n" XLEN real-milli)
     (if (eq? (unsat) (first m))
         (displayln (format "OK ~a ms" real-milli))
         ;; complete the solution in case the model is partial
@@ -115,9 +116,10 @@
               (displayln "Memory (Stack) after Execution:")
               (for ([k (range 64)] [i (evaluate (cpu-stack mem1-after) cex)] [j (evaluate (cpu-stack mem2-after) cex)])
                 (when (< k (bitvector->integer (read-register sp mem1-after)))
-                  (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))))))))
+                  (displayln (format "x~a ~a \t2 ~a \t ~a" k i j (if (bveq i j) "" "DIFFERENT"))))))))
+        (close-output-port my-file)))
 
-(display (format "====Verify equality of instructions (bit length: ~a)\n" XLEN))
+(display (format "===== Verify equality of instructions (bit length: ~a)\n" XLEN))
 ;(require rosette/solver/smt/cvc4)
 ;(require rosette/solver/smt/boolector)
 ;;(current-solver (cvc4 #:path "/home/zmaths/.isabelle/contrib/cvc4-1.8/x86_64-linux/cvc4"))
@@ -126,237 +128,267 @@
 
 (displayln "Verification of R-Type")
 
-;; (verify-eq
-;;  #:func1 add
-;;  #:func2 myadd #:space-on-stack (int32 5)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "ADD"
+ #:func1 add
+ #:func2 myadd
+ #:space-on-stack (int32 5)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 rvor
-;;  #:func2 myor
-;;  #:space-on-stack (int32 10)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "OR"
+ #:func1 rvor
+ #:func2 myor
+ #:space-on-stack (int32 10)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 rvxor
-;;  #:func2 myxor
-;;  #:space-on-stack (int32 10)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "XOR"
+ #:func1 rvxor
+ #:func2 myxor
+ #:space-on-stack (int32 10)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 rvand
-;;  #:func2 myand
-;;  #:space-on-stack (int32 10)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "AND"
+ #:func1 rvand
+ #:func2 myand
+ #:space-on-stack (int32 10)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 sll
-;;  #:func2 mysll-safe
-;;  #:space-on-stack (int32 6)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
+(verify-eq
+ #:name "SLL-SAFE"
+ #:func1 sll
+ #:func2 mysll-safe
+ #:space-on-stack (int32 6)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
 
-;; (verify-eq
-;;  #:func1 sll
-;;  #:func2 mysll
-;;  #:space-on-stack (int32 4)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLL"
+ #:func1 sll
+ #:func2 mysll
+ #:space-on-stack (int32 4)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 srl
-;;  #:func2 mysrl-safe
-;;  #:space-on-stack (int32 8)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
+(verify-eq
+ #:name "SRL-SAFE"
+ #:func1 srl
+ #:func2 mysrl-safe
+ #:space-on-stack (int32 8)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)))))
 
-;; (verify-eq
-;;  #:func1 srl
-;;  #:func2 mysrl
-;;  #:space-on-stack (int32 4)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SRL"
+ #:func1 srl
+ #:func2 mysrl
+ #:space-on-stack (int32 4)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 sra
-;;  #:func2 mysra-safe
-;;  #:space-on-stack (int32 8)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)) (bvsle (read-register rs2 mem) (int32 XLEN)))))
+(verify-eq
+ #:name "SRA-SAFE"
+ #:func1 sra
+ #:func2 mysra-safe
+ #:space-on-stack (int32 8)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (int32 0)) (bvsle (read-register rs2 mem) (int32 31)) (bvsle (read-register rs2 mem) (int32 XLEN)))))
 
-;; (verify-eq
-;;  #:func1 sra
-;;  #:func2 mysra
-;;  #:space-on-stack (int32 4)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SRA"
+ #:func1 sra
+ #:func2 mysra
+ #:space-on-stack (int32 4)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 slt
-;;  #:func2 myslt
-;;  #:space-on-stack (int32 0)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLT"
+ #:func1 slt
+ #:func2 myslt
+ #:space-on-stack (int32 0)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 sltu
-;;  #:func2 mysltu
-;;  #:space-on-stack (int32 5)
-;;  #:r_type true
-;;  #:i_type false
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLTU"
+ #:func1 sltu
+ #:func2 mysltu
+ #:space-on-stack (int32 5)
+ #:r_type true
+ #:i_type false
+ #:assumptions (λ(mem) #t))
 
 (displayln "\nVerification of I-Type")
 
-;; (verify-eq
-;;  #:func1 addi
-;;  #:func2 myaddi
-;;  #:space-on-stack (int32 4)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "ADDI"
+ #:func1 addi
+ #:func2 myaddi
+ #:space-on-stack (int32 4)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 ori
-;;  #:func2 myori
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "ORI"
+ #:func1 ori
+ #:func2 myori
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 xori
-;;  #:func2 myxori
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "XORI"
+ #:func1 xori
+ #:func2 myxori
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 andi
-;;  #:func2 myandi
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;; #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "ANDI"
+ #:func1 andi
+ #:func2 myandi
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+#:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 slli
-;;  #:func2 myslli-safe
-;;  #:space-on-stack (int32 5)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
+(verify-eq
+ #:name "SLLI-SAFE"
+ #:func1 slli
+ #:func2 myslli-safe
+ #:space-on-stack (int32 5)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)))))
 
-;; (verify-eq
-;;  #:func1 slli
-;;  #:func2 myslli
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLLI"
+ #:func1 slli
+ #:func2 myslli
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 srli
-;;  #:func2 mysrli-safe
-;;  #:space-on-stack (int32 7)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
+(verify-eq
+ #:name "SRLI-SAFE"
+ #:func1 srli
+ #:func2 mysrli-safe
+ #:space-on-stack (int32 7)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
-;; (verify-eq
-;;  #:func1 srli
-;;  #:func2 mysrli
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SRLI"
+ #:func1 srli
+ #:func2 mysrli
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 srai
-;;  #:func2 mysrai-safe
-;;  #:space-on-stack (int32 7)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
+(verify-eq
+ #:name "SRAI-SAFE"
+ #:func1 srai
+ #:func2 mysrai-safe
+ #:space-on-stack (int32 7)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (and (bvsgt imm (int32 0)) (bvsle imm (int32 31)) (bvsle imm (int32 XLEN)))))
 
-;; (verify-eq
-;;  #:func1 srai
-;;  #:func2 mysrai
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SRAI"
+ #:func1 srai
+ #:func2 mysrai
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 slti
-;;  #:func2 myslti
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLTI"
+ #:func1 slti
+ #:func2 myslti
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
-;; (verify-eq
-;;  #:func1 sltiu
-;;  #:func2 mysltiu
-;;  #:space-on-stack (int32 4)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) #t))
+(verify-eq
+ #:name "SLTIU"
+ #:func1 sltiu
+ #:func2 mysltiu
+ #:space-on-stack (int32 4)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) #t))
 
 (displayln "\nVerification of Jumps & Branching")
 
-;; (verify-eq
-;;  #:func1 bne
-;;  #:func2 mybne
-;;  #:space-on-stack (int32 0)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:name "BNE"
+ #:func1 bne
+ #:func2 mybne
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;; (verify-eq
-;;  #:func1 bge
-;;  #:func2 mybge
-;;  #:space-on-stack (int32 0)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:name "BGE"
+ #:func1 bge
+ #:func2 mybge
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;; (verify-eq
-;;  #:func1 bltu
-;;  #:func2 mybltu
-;;  #:space-on-stack (int32 4)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:name "BLTU"
+ #:func1 bltu
+ #:func2 mybltu
+ #:space-on-stack (int32 4)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;; (verify-eq
-;;  #:func1 bgeu
-;;  #:func2 mybgeu
-;;  #:space-on-stack (int32 0)
-;;  #:r_type false
-;;  #:i_type true
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:name "BGEU"
+ #:func1 bgeu
+ #:func2 mybgeu
+ #:space-on-stack (int32 0)
+ #:r_type false
+ #:i_type true
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
 
-;; (verify-eq
-;;  #:func1 jal
-;;  #:func2 myjal
-;;  #:space-on-stack (int32 3)
-;;  #:r_type false
-;;  #:i_type false
-;;  #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))
+(verify-eq
+ #:name "JAL"
+ #:func1 jal
+ #:func2 myjal
+ #:space-on-stack (int32 3)
+ #:r_type false
+ #:i_type false
+ #:assumptions (λ(mem) (bveq (bvsmod imm (int32 4)) (int32 0))))

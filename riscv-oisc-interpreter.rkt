@@ -2,7 +2,8 @@
 (require threading)
 (provide (all-defined-out))
 
-(define XLEN 16)
+; Number of bits
+(define XLEN 8)
 ; int32? is a shorthand for the type (bitvector XLEN).
 (define int32? (bitvector XLEN))
 ; Some loops need a limit higher than XLEN(i.e. right shift)
@@ -23,8 +24,9 @@
     (parameterize ([fuel (sub1 (fuel))])
       body ...)))
 
-; Auxiliary syntax rules which can be used in a ~>> block and work the same way
-; They modify the mem-state which is returned by the previous function, and return the new one
+; Auxiliary syntax rules which can be used in a ~>> block
+; They take as input the mem-state which is returned by the previous function (pre), modify it, and return the new one
+; For loop that executes the body until the bound is reached, and asserts that the check assertions hold
 (define-syntax ~>>for
   (syntax-rules ()
     ((_ pre bound check body ...)
@@ -35,6 +37,7 @@
            (set! x (~>> x body ...)))
          x)))))
 
+; Also a for loop, which breaks before the bound is reached if the break condition is true
 (define-syntax ~>>for-break
   (syntax-rules ()
     ((_ pre bound check #:break break body ...)
@@ -49,6 +52,7 @@
                  (set! x (~>> x body ...)))))
          x)))))
 
+; Execute the body if the check condition holds
 (define-syntax ~>>when
   (syntax-rules ()
     ((_ pre check body ...)
@@ -58,6 +62,7 @@
            (set! x (~>> x body ...)))
          x)))))
 
+; Execute body1 if the check holds, body2 otherwise (can only execute one instruction each)
 (define-syntax ~>>if-else
   (syntax-rules ()
     ((_ pre check body1 body2)
@@ -68,7 +73,7 @@
              (set! x (~>> x body2)))
          x)))))
 
-; For debugging purposes
+; For better debugging
 (define (read-and-print-value str rs1 mem-state)
   (display (format "~a ~a" str (read-register rs1 mem-state)))
   mem-state)

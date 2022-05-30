@@ -5,3 +5,5 @@ The goal is to formally verify the correctness of the [macros](https://github.co
 When executing a program with standard RISC-V instructions and one with the new instructions, the architectural state of the resgisters and the stack
 should be equal. Therefore this Interpretor written in Rosette can take RISC-V and replaced instructions, execute both and compare the result.
 Furthermore, the equivalence of the RISC-V Instructions and the new instructions is verified by a SMT Solver. This means that no counterexample can be found, in which specific register values or combination of input registers would lead to a different result. The valid input is of course restricted, as not every register or value is valid.
+
+With benchmark-verifications.bash the verifier can be called with varying bit length (XLEN) and the verification times per instruction per bit length are stored in respective .dat files in the benchmarks folder.
