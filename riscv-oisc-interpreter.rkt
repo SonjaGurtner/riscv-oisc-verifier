@@ -78,7 +78,7 @@
   (display (format "~a ~a" str (read-register rs1 mem-state)))
   mem-state)
 
-; Print all Register and Stack values for better readability, stack will not be printed if sp == 0
+; Print all register and stack values for better readability, stack will not be printed if sp == 0
 ; k range in the stack loop needs to be adapted if stack size is changed
 (define (print-all-memory mem-state)
   (displayln (format "PC: ~a" (cpu-pc mem-state)))
@@ -239,6 +239,7 @@
 (define (rvand rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvand (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
+; the shift amount in RISC-V is 5 bits long, therefore the 5 lowest bits get extracted with (bvand x 31) 
 (define (sll rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (intXLEN 31))) mem-state)))
 
@@ -332,17 +333,13 @@
   (increment-pc (write-register rd (bvadd (cpu-pc mem-state) (bvshl imm (intXLEN 12))) mem-state)))
 
 ;============== Memory
+; syntax: lw x3, 0(sp) --> lw x3, 0, sp
 (define (lw rd imm rs1 mem-state)
   (let ([ind (convert-sp-index rs1 imm mem-state)])
-    ;(assert (bvslt ind (length-bv (cpu-stack mem-state) (bitvector XLEN))))
-    ;(assert (bvslt ind (bvsub (read-register x2 mem-state))))
     (increment-pc (write-register rd (list-ref-bv (cpu-stack mem-state) ind) mem-state))))
 
-;syntax: sw x3, 0(sp) --> sw x3, 0, sp
 (define (sw rs1 imm rs2 mem-state)
   (let ([ind (convert-sp-index rs2 imm mem-state)])
-    ;(assert (bvslt ind (length-bv (cpu-stack mem-state) (bitvector XLEN))))
-    ;(assert (bvslt ind (bvsub (read-register x2 mem-state))))
     (increment-pc
      (cpu
       (cpu-pc mem-state)
@@ -353,18 +350,18 @@
 ;============== R-Type
 (define (myadd rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -20))
-       (sw t0 (intXLEN 0) sp)
+       (addi sp sp (intXLEN -20))			;; preserve space on stack
+       (sw t0 (intXLEN 0) sp)				;; save registers
        (sw t1 (intXLEN 4) sp)
        (sw t2 (intXLEN 8) sp)
        (sw rs1 (intXLEN 12) sp)
        (sw rs2 (intXLEN 16) sp)
-       (lw t1 (intXLEN 12) sp)
-       (lw t0 (intXLEN 16) sp)
-       (sub t0 x0 t0)
-       (sub t2 t1 t0)
+       (lw t1 (intXLEN 12) sp)				;; t1 = rs1
+       (lw t0 (intXLEN 16) sp)				;; t0 = rs2
+       (sub t0 x0 t0)						;; t0 = -rs2
+       (sub t2 t1 t0)						;; t2 = rs1-(-rs2)
        (sw t2 (intXLEN 16) sp)
-       (lw t2 (intXLEN 8) sp)
+       (lw t2 (intXLEN 8) sp)				;; restore registers
        (lw t1 (intXLEN 4) sp)
        (lw t0 (intXLEN 0) sp)
        (lw rd (intXLEN 16) sp)
@@ -374,43 +371,48 @@
 
 (define (myxor rd rs1 rs2 mem-state)
   (let ([start-pc (cpu-pc mem-state)])
+    ;; special cases, if one of the two source registers is 0, then the result is the value of the other register
        (if (bveq (read-register rs1 mem-state) (intXLEN 0))
            (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
            (if (bveq (read-register rs2 mem-state) (intXLEN 0))
                (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
                (~>> mem-state
                     (addi sp sp (intXLEN -40))
-                    (sw t3 (intXLEN 0) sp)
-                    (sw t4 (intXLEN 4) sp)
-                    (sw t5 (intXLEN 8) sp)
-                    (sw t6 (intXLEN 12) sp)
-                    (sw t0 (intXLEN 16) sp)
-                    (sw t1 (intXLEN 20) sp)
-                    (sw t2 (intXLEN 24) sp)
+                    (sw t3 (intXLEN 0) sp)				;; shifting rs1
+                    (sw t4 (intXLEN 4) sp)				;; shifting rs2
+                    (sw t5 (intXLEN 8) sp)				;; msb eliminated rs1
+                    (sw t6 (intXLEN 12) sp)			;; msb eliminated rs2
+                    (sw t0 (intXLEN 16) sp)			;; 1 for comparing MSBs
+                    (sw t1 (intXLEN 20) sp)			;; loop counter i
+                    (sw t2 (intXLEN 24) sp)			;; loop limit
                     (sw s1 (intXLEN 28) sp)
                     (sw rs1 (intXLEN 32) sp)
                     (sw rs2 (intXLEN 36) sp)
-                    (lw t3 (intXLEN 32) sp)
-                    (lw t4 (intXLEN 36) sp)
+                    (lw t3 (intXLEN 32) sp)			;; t3 = rs1
+                    (lw t4 (intXLEN 36) sp)			;; t4 = rs2
                     (addi t0 x0 (intXLEN 1))
-                    (sub t1 x0 x0)
-                    (addi t2 x0 (intXLEN XLEN))
+                    (sub t1 x0 x0)						;; i starts with 0
+                    (addi t2 x0 (intXLEN XLEN))		;; loop limit = XLEN
                     (sub s1 x0 x0)
+                    ;; Rosette cannot handle unbounded loops, therefore XLEN is used as bound
+                    ;; First check is that i is always the same value as t1 (which is used in the loop as i)
                     (~>>for _ XLEN
                         (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
-                        (slli s1 s1 (intXLEN 1))
+                        (slli s1 s1 (intXLEN 1))			;; shift the result left by 1
                         (slli t5 t3 (intXLEN 1))
-                        (srli t5 t5 (intXLEN 1))
+                        (srli t5 t5 (intXLEN 1))			;; eliminated MSB of rs1
                         (slli t6 t4 (intXLEN 1))
-                        (srli t6 t6 (intXLEN 1))
+                        (srli t6 t6 (intXLEN 1))			;; eliminated MSB of rs2
                         (sub t5 t3 t5)
+                        ;; if the result of subtracting the shifted version from the original one, the MSB is 1
                         (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
                         (sub t6 t4 t6)
                         (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
                         (add t5 t5 t6)
+                        ;; sum of MSBs has to be exactly one (0^1, 1^0)
                         (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
                         (addi t1 t1 (intXLEN 1))
-                        (slli t3 t3 (intXLEN 1))
+                        (slli t3 t3 (intXLEN 1))			;; shift rs1 and rs2 left by 1 to compare the next bit
                         (slli t4 t4 (intXLEN 1)))
                     (sw s1 (intXLEN 36) sp)
                     (lw s1 (intXLEN 28) sp)
@@ -757,10 +759,10 @@
        (sw t1 (intXLEN 4) sp)
        (sw t2 (intXLEN 8) sp)
        (sub t1 x0 rs1)
-       (sub t1 x0 t1)
+       (sub t1 x0 t1)					;; t1= rs1
        (addi t0 x0 imm)
-       (sub t0 x0 t0)
-       (sub t2 t1 t0)
+       (sub t0 x0 t0)					;; t0 = -imm
+       (sub t2 t1 t0)					;; t2 = rs1-(-imm)
        (sw t2 (intXLEN 12) sp)
        (lw t2 (intXLEN 8) sp)
        (lw t1 (intXLEN 4) sp)
@@ -776,9 +778,9 @@
        (sw t0 (intXLEN 0) sp)
        (sw t1 (intXLEN 4) sp)
        (sub t1 x0 rs1)
-       (sub t1  x0  t1)
-       (addi t0  x0  imm)
-       (rvxor rd  t1  t0)
+       (sub t1  x0  t1)					;; t1 = rs1
+       (addi t0  x0  imm)				;; t0 = imm
+       (rvxor rd  t1  t0)					;; call xor with rs1 and imm
        (sw rd  (intXLEN 8) sp)
        (lw t1  (intXLEN 4) sp)
        (lw t0  (intXLEN 0) sp)
@@ -795,7 +797,7 @@
        (sub t1 x0 rs1)
        (sub t1  x0  t1)
        (addi t0  x0  imm)
-       (rvor rd  t1  t0)
+       (rvor rd  t1  t0)					;; call or with rs1 and imm
        (sw rd  (intXLEN 8) sp)
        (lw t1  (intXLEN 4) sp)
        (lw t0  (intXLEN 0) sp)
@@ -812,7 +814,7 @@
        (sub t1 x0 rs1)
        (sub t1  x0  t1)
        (addi t0  x0  imm)
-       (rvand rd  t1  t0)
+       (rvand rd  t1  t0)					;; call and with rs1 and imm
        (sw rd  (intXLEN 8) sp)
        (lw t1  (intXLEN 4) sp)
        (lw t0  (intXLEN 0) sp)
