@@ -197,27 +197,27 @@
 (struct op-myjal (rd imm) #:super struct:instruction)
 
 ;========================= Auxiliary Methods
-; read and return the value of a register
+; Read and return the value of a register
 (define (read-register rd mem-state)
   (list-ref-bv (cpu-registers mem-state) rd))
 
-; write a new value into a register
+; Write a new value into a register
 (define (write-register rd val mem-state)
   (cpu (cpu-pc mem-state) (list-set-bv (cpu-registers mem-state) rd val) (cpu-stack mem-state)))
 
-; increment the register by a given value
+; Increment the register by a given value
 (define (increment-register rd val mem-state)
   (write-register rd (bvadd (read-register rd mem-state) val) mem-state))
 
-; increment the pc by 4, goes to next instruction
+; Increment the pc by 4, goes to next instruction
 (define (increment-pc mem-state)
   (cpu (bvadd (intXLEN 4) (cpu-pc mem-state)) (cpu-registers mem-state)  (cpu-stack mem-state)))
 
-; convert the sp and offset to the index of the respective position in the stack
+; Convert the sp and offset to the index of the respective position in the stack
 (define (convert-sp-index rd offset mem-state)
   (bvsub (bvlshr (bvsub (bvneg (read-register rd mem-state)) offset) (intXLEN 2)) (intXLEN 1)))
 
-; set the pc to a given value
+; Set the pc to a given value
 (define (set-pc pc mem-state)
   (cpu pc (cpu-registers mem-state) (cpu-stack mem-state)))
 
@@ -229,7 +229,7 @@
 (define (sub rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvsub (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
-; added rv to the name, as rosette already has xor/or/and defined as functions
+; Added rv to the name, as rosette already has xor/or/and defined as functions
 (define (rvxor rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvxor (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state) ))
 
@@ -239,7 +239,7 @@
 (define (rvand rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvand (read-register rs1 mem-state) (read-register rs2 mem-state)) mem-state)))
 
-; the shift amount in RISC-V is 5 bits long, therefore the 5 lowest bits get extracted with (bvand x 31) 
+; The shift amount in RISC-V is 5 bits long, therefore the 5 lowest bits get extracted with (bvand x 31)
 (define (sll rd rs1 rs2 mem-state)
   (increment-pc (write-register rd (bvshl (read-register rs1 mem-state) (bvand (read-register rs2 mem-state) (intXLEN 31))) mem-state)))
 
@@ -295,36 +295,36 @@
       (increment-pc mem-state)))
 
 (define (blt rs1 rs2 imm mem-state)
-    (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state))
+  (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state))
       (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
       (increment-pc mem-state)))
 
 (define (bge rs1 rs2 imm mem-state)
-    (if (bvsge (read-register rs1 mem-state) (read-register rs2 mem-state))
+  (if (bvsge (read-register rs1 mem-state) (read-register rs2 mem-state))
       (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
       (increment-pc mem-state)))
 
 (define (bltu rs1 rs2 imm mem-state)
-    (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state))
+  (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state))
       (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
       (increment-pc mem-state)))
 
 (define (bgeu rs1 rs2 imm mem-state)
-    (if (bvuge (read-register rs1 mem-state) (read-register rs2 mem-state))
+  (if (bvuge (read-register rs1 mem-state) (read-register rs2 mem-state))
       (set-pc (bvadd (cpu-pc mem-state) imm) mem-state)
       (increment-pc mem-state)))
 
 (define (jal rd imm mem-state)
   (~>> mem-state
-       (addi rd x0 (cpu-pc mem-state))
-       (addi rd rd (intXLEN 4))
-       (set-pc (bvadd (cpu-pc mem-state) imm))))
+     (addi rd x0 (cpu-pc mem-state))
+     (addi rd rd (intXLEN 4))
+     (set-pc (bvadd (cpu-pc mem-state) imm))))
 
 (define (jalr rd rs1 imm mem-state)
   (~>> mem-state
-       (addi rd x0 (cpu-pc mem-state))
-       (addi rd rd (intXLEN 4))
-       (set-pc (bvadd (read-register rs1) imm))))
+     (addi rd x0 (cpu-pc mem-state))
+     (addi rd rd (intXLEN 4))
+     (set-pc (bvadd (read-register rs1) imm))))
 
 (define (lui rd imm mem-state)
   (increment-pc (write-register rd (bvshl imm (intXLEN 12)) mem-state)))
@@ -350,406 +350,426 @@
 ;============== R-Type
 (define (myadd rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -20))			;; preserve space on stack
-       (sw t0 (intXLEN 0) sp)				;; save registers
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw rs1 (intXLEN 12) sp)
-       (sw rs2 (intXLEN 16) sp)
-       (lw t1 (intXLEN 12) sp)				;; t1 = rs1
-       (lw t0 (intXLEN 16) sp)				;; t0 = rs2
-       (sub t0 x0 t0)						;; t0 = -rs2
-       (sub t2 t1 t0)						;; t2 = rs1-(-rs2)
-       (sw t2 (intXLEN 16) sp)
-       (lw t2 (intXLEN 8) sp)				;; restore registers
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 16) sp)
-       (addi sp sp (intXLEN 20))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -20))				;; preserve space on stack
+     (sw t0 (intXLEN 0) sp)				;; save registers
+     (sw t1 (intXLEN 4) sp)
+     (sw t2 (intXLEN 8) sp)
+     (sw rs1 (intXLEN 12) sp)
+     (sw rs2 (intXLEN 16) sp)
+     (lw t1 (intXLEN 12) sp)				;; t1 = rs1
+     (lw t0 (intXLEN 16) sp)				;; t0 = rs2
+     (sub t0 x0 t0)					;; t0 = -rs2
+     (sub t2 t1 t0)					;; t2 = rs1-(-rs2)
+     (sw t2 (intXLEN 16) sp)
+     (lw t2 (intXLEN 8) sp)				;; restore registers
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 16) sp)
+     (addi sp sp (intXLEN 20))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (myxor rd rs1 rs2 mem-state)
   (let ([start-pc (cpu-pc mem-state)])
     ;; special cases, if one of the two source registers is 0, then the result is the value of the other register
-       (if (bveq (read-register rs1 mem-state) (intXLEN 0))
-           (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
-           (if (bveq (read-register rs2 mem-state) (intXLEN 0))
-               (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
-               (~>> mem-state
-                    (addi sp sp (intXLEN -40))
-                    (sw t3 (intXLEN 0) sp)				;; shifting rs1
-                    (sw t4 (intXLEN 4) sp)				;; shifting rs2
-                    (sw t5 (intXLEN 8) sp)				;; msb eliminated rs1
-                    (sw t6 (intXLEN 12) sp)			;; msb eliminated rs2
-                    (sw t0 (intXLEN 16) sp)			;; 1 for comparing MSBs
-                    (sw t1 (intXLEN 20) sp)			;; loop counter i
-                    (sw t2 (intXLEN 24) sp)			;; loop limit
-                    (sw s1 (intXLEN 28) sp)
-                    (sw rs1 (intXLEN 32) sp)
-                    (sw rs2 (intXLEN 36) sp)
-                    (lw t3 (intXLEN 32) sp)			;; t3 = rs1
-                    (lw t4 (intXLEN 36) sp)			;; t4 = rs2
-                    (addi t0 x0 (intXLEN 1))
-                    (sub t1 x0 x0)						;; i starts with 0
-                    (addi t2 x0 (intXLEN XLEN))		;; loop limit = XLEN
-                    (sub s1 x0 x0)
-                    ;; Rosette cannot handle unbounded loops, therefore XLEN is used as bound
-                    ;; First check is that i is always the same value as t1 (which is used in the loop as i)
-                    (~>>for _ XLEN
-                        (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
-                        (slli s1 s1 (intXLEN 1))			;; shift the result left by 1
-                        (slli t5 t3 (intXLEN 1))
-                        (srli t5 t5 (intXLEN 1))			;; eliminated MSB of rs1
-                        (slli t6 t4 (intXLEN 1))
-                        (srli t6 t6 (intXLEN 1))			;; eliminated MSB of rs2
-                        (sub t5 t3 t5)
-                        ;; if the result of subtracting the shifted version from the original one, the MSB is 1
-                        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
-                        (sub t6 t4 t6)
-                        (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
-                        (add t5 t5 t6)
-                        ;; sum of MSBs has to be exactly one (0^1, 1^0)
-                        (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
-                        (addi t1 t1 (intXLEN 1))
-                        (slli t3 t3 (intXLEN 1))			;; shift rs1 and rs2 left by 1 to compare the next bit
-                        (slli t4 t4 (intXLEN 1)))
-                    (sw s1 (intXLEN 36) sp)
-                    (lw s1 (intXLEN 28) sp)
-                    (lw t2 (intXLEN 24) sp)
-                    (lw t1 (intXLEN 20) sp)
-                    (lw t0 (intXLEN 16) sp)
-                    (lw t6 (intXLEN 12) sp)
-                    (lw t5 (intXLEN 8) sp)
-                    (lw t4 (intXLEN 4) sp)
-                    (lw t3 (intXLEN 0) sp)
-                    (lw rd (intXLEN 36) sp)
-                    (addi sp sp (intXLEN 40))
-                    (set-pc start-pc)
-                    (increment-pc))))))
+    (if (bveq (read-register rs1 mem-state) (intXLEN 0))
+        (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+        (if (bveq (read-register rs2 mem-state) (intXLEN 0))
+            (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+            (~>> mem-state
+               (addi sp sp (intXLEN -40))
+               (sw t3 (intXLEN 0) sp)			;; shifting rs1
+               (sw t4 (intXLEN 4) sp)			;; shifting rs2
+               (sw t5 (intXLEN 8) sp)			;; MSB eliminated rs1
+               (sw t6 (intXLEN 12) sp)			;; MSB eliminated rs2
+               (sw t0 (intXLEN 16) sp)			;; 1 for comparing MSBs
+               (sw t1 (intXLEN 20) sp)			;; loop counter i
+               (sw t2 (intXLEN 24) sp)			;; loop limit
+               (sw s1 (intXLEN 28) sp)
+               (sw rs1 (intXLEN 32) sp)
+               (sw rs2 (intXLEN 36) sp)
+               (lw t3 (intXLEN 32) sp)			;; t3 = rs1
+               (lw t4 (intXLEN 36) sp)			;; t4 = rs2
+               (addi t0 x0 (intXLEN 1))			;; for comparing sum of MSBs
+               (sub t1 x0 x0)				;; i starts with 0
+               (addi t2 x0 (intXLEN XLEN))		;; loop limit = XLEN
+               (sub s1 x0 x0)
+               ;; Rosette cannot handle unbounded loops, therefore XLEN is used as bound (as we compare every bit)
+               ;; First check is that i is always the same value as t1 (which is used in the loop as i)
+               (~>>for _ XLEN
+                  (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
+                  (slli s1 s1 (intXLEN 1))		;; shift the result left by 1
+                  (slli t5 t3 (intXLEN 1))
+                  (srli t5 t5 (intXLEN 1))		;; eliminated MSB of rs1
+                  (slli t6 t4 (intXLEN 1))
+                  (srli t6 t6 (intXLEN 1))		;; eliminated MSB of rs2
+                  (sub t5 t3 t5)
+                  ;; if the result of subtracting the shifted version from the original one, the MSB is 1
+                  (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
+                  (sub t6 t4 t6)
+                  (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
+                  (add t5 t5 t6)
+                  ;; sum of MSBs has to be exactly one (0^1, 1^0)
+                  (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
+                  (addi t1 t1 (intXLEN 1))
+                  (slli t3 t3 (intXLEN 1))		;; shift rs1 and rs2 left by 1 to compare the next bit
+                  (slli t4 t4 (intXLEN 1)))
+               (sw s1 (intXLEN 36) sp)
+               (lw s1 (intXLEN 28) sp)
+               (lw t2 (intXLEN 24) sp)
+               (lw t1 (intXLEN 20) sp)
+               (lw t0 (intXLEN 16) sp)
+               (lw t6 (intXLEN 12) sp)
+               (lw t5 (intXLEN 8) sp)
+               (lw t4 (intXLEN 4) sp)
+               (lw t3 (intXLEN 0) sp)
+               (lw rd (intXLEN 36) sp)
+               (addi sp sp (intXLEN 40))
+               (set-pc start-pc)
+               (increment-pc))))))
 
 (define (myor rd rs1 rs2 mem-state)
   (let ([start-pc (cpu-pc mem-state)])
-       (if (bveq (read-register rs1 mem-state) (intXLEN 0))
-           (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
-           (if (bveq (read-register rs2 mem-state) (intXLEN 0))
-               (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
-               (~>> mem-state
-                    (addi sp sp (intXLEN -40))
-                    (sw t3 (intXLEN 0) sp)
-                    (sw t4 (intXLEN 4) sp)
-                    (sw t5 (intXLEN 8) sp)
-                    (sw t6 (intXLEN 12) sp)
-                    (sw t0 (intXLEN 16) sp)
-                    (sw t1 (intXLEN 20) sp)
-                    (sw t2 (intXLEN 24) sp)
-                    (sw s1 (intXLEN 28) sp)
-                    (sw rs1 (intXLEN 32) sp)
-                    (sw rs2 (intXLEN 36) sp)
-                    (lw t3 (intXLEN 32) sp)
-                    (lw t4 (intXLEN 36) sp)
-                    (addi t0 x0 (intXLEN 1))
-                    (sub t1 x0 x0)
-                    (addi t2 x0 (intXLEN XLEN))
-                    (sub s1 x0 x0)
-                    (~>>for _ XLEN
-                        (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
-                        (slli s1 s1 (intXLEN 1))
-                        (slli t5 t3 (intXLEN 1))
-                        (srli t5 t5 (intXLEN 1))
-                        (slli t6 t4 (intXLEN 1))
-                        (srli t6 t6 (intXLEN 1))
-                        (sub t5 t3 t5)
-                        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
-                        (sub t6 t4 t6)
-                        (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
-                        (add t5 t5 t6)
-                        (~>>when _ (λ(mem) (bvslt (intXLEN 0) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
-                        (addi t1 t1 (intXLEN 1))
-                        (slli t3 t3 (intXLEN 1))
-                        (slli t4 t4 (intXLEN 1)))
-                    (sw s1 (intXLEN 36) sp)
-                    (lw s1 (intXLEN 28) sp)
-                    (lw t2 (intXLEN 24) sp)
-                    (lw t1 (intXLEN 20) sp)
-                    (lw t0 (intXLEN 16) sp)
-                    (lw t6 (intXLEN 12) sp)
-                    (lw t5 (intXLEN 8) sp)
-                    (lw t4 (intXLEN 4) sp)
-                    (lw t3 (intXLEN 0) sp)
-                    (lw rd (intXLEN 36) sp)
-                    (addi sp sp (intXLEN 40))
-                    (set-pc start-pc)
-                    (increment-pc))))))
+    ;; special cases, if one of the registers is 0 then just return the other one
+    (if (bveq (read-register rs1 mem-state) (intXLEN 0))
+        (~>> mem-state (sub rd x0 rs2) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+        (if (bveq (read-register rs2 mem-state) (intXLEN 0))
+            (~>> mem-state (sub rd x0 rs1) (sub rd x0 rd) (set-pc start-pc) (increment-pc))
+            (~>> mem-state
+               (addi sp sp (intXLEN -40))
+               (sw t3 (intXLEN 0) sp)			;; shifting rs1
+               (sw t4 (intXLEN 4) sp)			;; shifting rs2
+               (sw t5 (intXLEN 8) sp)			;; MSB eliminated rs1
+               (sw t6 (intXLEN 12) sp)			;; MSB eliminated rs2
+               (sw t0 (intXLEN 16) sp)			;; 1 for comparing MSBs
+               (sw t1 (intXLEN 20) sp)			;; loop counter i
+               (sw t2 (intXLEN 24) sp)			;; loop limit
+               (sw s1 (intXLEN 28) sp)
+               (sw rs1 (intXLEN 32) sp)
+               (sw rs2 (intXLEN 36) sp)
+               (lw t3 (intXLEN 32) sp)			;; t3 = rs1
+               (lw t4 (intXLEN 36) sp)			;; t4 = rs2
+               (addi t0 x0 (intXLEN 1))			;; for comparing sum of MSBs
+               (sub t1 x0 x0)
+               (addi t2 x0 (intXLEN XLEN))		;; loop limit is XLEN
+               (sub s1 x0 x0)
+               (~>>for _ XLEN
+                  (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
+                  (slli s1 s1 (intXLEN 1))
+                  (slli t5 t3 (intXLEN 1))		;; eliminate MSB
+                  (srli t5 t5 (intXLEN 1))
+                  (slli t6 t4 (intXLEN 1))
+                  (srli t6 t6 (intXLEN 1))
+                  (sub t5 t3 t5)
+                  ;; if t5 == 0 then MSB = 0, else MSB = 1
+                  (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
+                  (sub t6 t4 t6)
+                  (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
+                  (add t5 t5 t6)
+                  ;; sum of MSBs has to be at least 1 (0|1, 1|0, 1|1)
+                  (~>>when _ (λ(mem) (bvslt (intXLEN 0) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
+                  (addi t1 t1 (intXLEN 1))		;; i++
+                  (slli t3 t3 (intXLEN 1))
+                  (slli t4 t4 (intXLEN 1)))
+               (sw s1 (intXLEN 36) sp)
+               (lw s1 (intXLEN 28) sp)
+               (lw t2 (intXLEN 24) sp)
+               (lw t1 (intXLEN 20) sp)
+               (lw t0 (intXLEN 16) sp)
+               (lw t6 (intXLEN 12) sp)
+               (lw t5 (intXLEN 8) sp)
+               (lw t4 (intXLEN 4) sp)
+               (lw t3 (intXLEN 0) sp)
+               (lw rd (intXLEN 36) sp)
+               (addi sp sp (intXLEN 40))
+               (set-pc start-pc)
+               (increment-pc))))))
 
 (define (myand rd rs1 rs2 mem-state)
   (let ([start-pc (cpu-pc mem-state)])
-       (if (bveq (read-register rs1 mem-state) (intXLEN 0))
-           (~>> mem-state (sub rd x0 x0) (set-pc start-pc) (increment-pc))
-           (if (bveq (read-register rs2 mem-state) (intXLEN 0))
-               (~>> mem-state (sub rd x0 x0) (set-pc start-pc) (increment-pc))
-               (~>> mem-state
-                    (addi sp sp (intXLEN -40))
-                    (sw t3 (intXLEN 0) sp)
-                    (sw t4 (intXLEN 4) sp)
-                    (sw t5 (intXLEN 8) sp)
-                    (sw t6 (intXLEN 12) sp)
-                    (sw t0 (intXLEN 16) sp)
-                    (sw t1 (intXLEN 20) sp)
-                    (sw t2 (intXLEN 24) sp)
-                    (sw s1 (intXLEN 28) sp)
-                    (sw rs1 (intXLEN 32) sp)
-                    (sw rs2 (intXLEN 36) sp)
-                    (lw t3 (intXLEN 32) sp)
-                    (lw t4 (intXLEN 36) sp)
-                    (addi t0 x0 (intXLEN 2))
-                    (sub t1 x0 x0)
-                    (addi t2 x0 (intXLEN XLEN))
-                    (sub s1 x0 x0)
-                    (~>>for _ XLEN
-                        (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
-                        (slli s1 s1 (intXLEN 1))
-                        (slli t5 t3 (intXLEN 1))
-                        (srli t5 t5 (intXLEN 1))
-                        (slli t6 t4 (intXLEN 1))
-                        (srli t6 t6 (intXLEN 1))
-                        (sub t5 t3 t5)
-                        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
-                        (sub t6 t4 t6)
-                        (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
-                        (add t5 t5 t6)
-                        (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
-                        (addi t1 t1 (intXLEN 1))
-                        (slli t3 t3 (intXLEN 1))
-                        (slli t4 t4 (intXLEN 1)))
-                    (sw s1 (intXLEN 36) sp)
-                    (lw s1 (intXLEN 28) sp)
-                    (lw t2 (intXLEN 24) sp)
-                    (lw t1 (intXLEN 20) sp)
-                    (lw t0 (intXLEN 16) sp)
-                    (lw t6 (intXLEN 12) sp)
-                    (lw t5 (intXLEN 8) sp)
-                    (lw t4 (intXLEN 4) sp)
-                    (lw t3 (intXLEN 0) sp)
-                    (lw rd (intXLEN 36) sp)
-                    (addi sp sp (intXLEN 40))
-                    (set-pc start-pc)
-                    (increment-pc))))))
+    (if (bveq (read-register rs1 mem-state) (intXLEN 0))
+        (~>> mem-state (sub rd x0 x0) (set-pc start-pc) (increment-pc))
+        (if (bveq (read-register rs2 mem-state) (intXLEN 0))
+            (~>> mem-state (sub rd x0 x0) (set-pc start-pc) (increment-pc))
+            (~>> mem-state
+               (addi sp sp (intXLEN -40))
+               (sw t3 (intXLEN 0) sp)			;; shifting rs1
+               (sw t4 (intXLEN 4) sp)			;; shifting rs2
+               (sw t5 (intXLEN 8) sp)			;; MSB eliminated rs1
+               (sw t6 (intXLEN 12) sp)			;; MSB eliminated rs2
+               (sw t0 (intXLEN 16) sp)			;; 1 for comparing MSBs
+               (sw t1 (intXLEN 20) sp)			;; loop counter i
+               (sw t2 (intXLEN 24) sp)			;; loop limit
+               (sw s1 (intXLEN 28) sp)
+               (sw rs1 (intXLEN 32) sp)
+               (sw rs2 (intXLEN 36) sp)
+               (lw t3 (intXLEN 32) sp)			;; t3 = rs1
+               (lw t4 (intXLEN 36) sp)			;; t4 = rs2
+               (addi t0 x0 (intXLEN 2))			;; for comparing sum of MSBs
+               (sub t1 x0 x0)
+               (addi t2 x0 (intXLEN XLEN))
+               (sub s1 x0 x0)
+               (~>>for _ XLEN
+                  (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
+                  (slli s1 s1 (intXLEN 1))
+                  (slli t5 t3 (intXLEN 1))		;; eliminate MSB
+                  (srli t5 t5 (intXLEN 1))
+                  (slli t6 t4 (intXLEN 1))
+                  (srli t6 t6 (intXLEN 1))
+                  (sub t5 t3 t5)
+                  ;; if t5 == 0 then MSB = 0, else MSB = 1
+                  (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
+                  (sub t6 t4 t6)
+                  (~>>when _ (λ(mem) (not (bveq (read-register t6 mem) (intXLEN 0)))) (addi t6 x0 (intXLEN 1)))
+                  (add t5 t5 t6)
+                  ;; sum of MSBs has to be exactly 2 (1&1)
+                  (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t5 mem))) (addi s1 s1 (intXLEN 1)))
+                  (addi t1 t1 (intXLEN 1))		;; i++
+                  (slli t3 t3 (intXLEN 1))
+                  (slli t4 t4 (intXLEN 1)))
+               (sw s1 (intXLEN 36) sp)
+               (lw s1 (intXLEN 28) sp)
+               (lw t2 (intXLEN 24) sp)
+               (lw t1 (intXLEN 20) sp)
+               (lw t0 (intXLEN 16) sp)
+               (lw t6 (intXLEN 12) sp)
+               (lw t5 (intXLEN 8) sp)
+               (lw t4 (intXLEN 4) sp)
+               (lw t3 (intXLEN 0) sp)
+               (lw rd (intXLEN 36) sp)
+               (addi sp sp (intXLEN 40))
+               (set-pc start-pc)
+               (increment-pc))))))
 
 (define (mysll rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -16))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (sw rs2 (intXLEN 12) sp)
-       (lw t1 (intXLEN 8) sp)
-       (lw t0 (intXLEN 12) sp)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sll rd t1 t0))
-       (sw rd (intXLEN 12) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 12) sp)
-       (addi sp sp (intXLEN 16))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -16))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (sw rs2 (intXLEN 12) sp)
+     (lw t1 (intXLEN 8) sp)
+     (lw t0 (intXLEN 12) sp)
+     (andi t0 t0 (intXLEN 31))				;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sll rd t1 t0))
+     (sw rd (intXLEN 12) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 12) sp)
+     (addi sp sp (intXLEN 16))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+;; Shift left by 1 is the same as * 2
+;; The "safe" shift versions assume that the value of rs2 is valid
 (define (mysll-safe rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -24))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw rs1 (intXLEN 16) sp)
-       (sw rs2 (intXLEN 20) sp)
-       (lw t3 (intXLEN 16) sp)
-       (lw t1 (intXLEN 20) sp)
-       (sub t2 x0 x0)
-       (sub t0 x0 t3)
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (sub t3 t3 t0)
-          (sub t0 x0 t3)
-          (addi t2 t2 (intXLEN 1)))
-       (sw t3 (intXLEN 20) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 20) sp)
-       (addi sp sp (intXLEN 24))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -24))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter i
+     (sw t3 (intXLEN 12) sp)
+     (sw rs1 (intXLEN 16) sp)
+     (sw rs2 (intXLEN 20) sp)
+     (lw t3 (intXLEN 16) sp)				;; t3 = rs1, will become rd
+     (lw t1 (intXLEN 20) sp)				;; loop bound = rs2
+     (sub t2 x0 x0)
+     (sub t0 x0 t3)					;; t0 = -rd
+     ;; for rs2 times do rd-(-rd)
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (sub t3 t3 t0)
+        (sub t0 x0 t3)
+        (addi t2 t2 (intXLEN 1)))			;; i++
+     (sw t3 (intXLEN 20) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 20) sp)
+     (addi sp sp (intXLEN 24))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysrl rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -16))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (sw rs2 (intXLEN 12) sp)
-       (lw t1 (intXLEN 8) sp)
-       (lw t0 (intXLEN 12) sp)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (srl rd t1 t0))
-       (sw rd (intXLEN 12) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 12) sp)
-       (addi sp sp (intXLEN 16))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -16))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (sw rs2 (intXLEN 12) sp)
+     (lw t1 (intXLEN 8) sp)
+     (lw t0 (intXLEN 12) sp)
+     (andi t0 t0 (intXLEN 31))				;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (srl rd t1 t0))
+     (sw rd (intXLEN 12) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 12) sp)
+     (addi sp sp (intXLEN 16))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+; Shift right by 1 is the same as a circular shift left by 31 (32-1)
 (define (mysrl-safe rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -32))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw t4 (intXLEN 16) sp)
-       (sw t5 (intXLEN 20) sp)
-       (sw rs1 (intXLEN 24) sp)
-       (sw rs2 (intXLEN 28) sp)
-       (lw t0 (intXLEN 24) sp)
-       (lw t4 (intXLEN 24) sp)
-       (lw t2 (intXLEN 28) sp)
-       (addi t1 x0 (intXLEN XLEN))
-       (sub t1 t1 t2)
-       (sub t2 x0 x0)
-       (sub t3 x0 x0)
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t4 t4 (intXLEN 1))
-          (srli t4 t4 (intXLEN 1))
-          (slli t3 t3 (intXLEN 1))
-          (sub t5 t0 t4)
-          (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
-          (addi t2 t2 (intXLEN 1))
-          (slli t0 t0 (intXLEN 1))
-          (slli t4 t4 (intXLEN 1)))
-       (sw t3 (intXLEN 28) sp)
-       (lw t5 (intXLEN 20) sp)
-       (lw t4 (intXLEN 16) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 28) sp)
-       (addi sp sp (intXLEN 32))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -32))
+     (sw t0 (intXLEN 0) sp)				;; shifting rs1
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter
+     (sw t3 (intXLEN 12) sp)				;; will become rd
+     (sw t4 (intXLEN 16) sp)				;; MSB eliminated rs1
+     (sw t5 (intXLEN 20) sp)				;; MSB of rs1
+     (sw rs1 (intXLEN 24) sp)
+     (sw rs2 (intXLEN 28) sp)
+     (lw t0 (intXLEN 24) sp)
+     (lw t4 (intXLEN 24) sp)
+     (lw t2 (intXLEN 28) sp)
+     (addi t1 x0 (intXLEN XLEN))
+     (sub t1 t1 t2)					;; loop bound = 32-rs2
+     (sub t2 x0 x0)
+     (sub t3 x0 x0)
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t4 t4 (intXLEN 1))			;; eliminate MSB
+        (srli t4 t4 (intXLEN 1))
+        (slli t3 t3 (intXLEN 1))			;; shift result
+        (sub t5 t0 t4)
+        ;; if t5 == 0 then MSB = 0, else MSB  = 1
+        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
+        (addi t2 t2 (intXLEN 1))			;; i++
+        (slli t0 t0 (intXLEN 1))			;; shift to look at next bit
+        (slli t4 t4 (intXLEN 1)))
+     (sw t3 (intXLEN 28) sp)
+     (lw t5 (intXLEN 20) sp)
+     (lw t4 (intXLEN 16) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 28) sp)
+     (addi sp sp (intXLEN 32))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysra rd rs1 rs2 mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -16))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (sw rs2 (intXLEN 12) sp)
-       (lw t1 (intXLEN 8) sp)
-       (lw t0 (intXLEN 12) sp)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sra rd t1 t0))
-       (sw rd (intXLEN 12) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 12) sp)
-       (addi sp sp (intXLEN 16))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -16))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (sw rs2 (intXLEN 12) sp)
+     (lw t1 (intXLEN 8) sp)
+     (lw t0 (intXLEN 12) sp)
+     (andi t0 t0 (intXLEN 31))				;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sra rd t1 t0))
+     (sw rd (intXLEN 12) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 12) sp)
+     (addi sp sp (intXLEN 16))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+;; For arithmetic shift, first copy the MSB for rs2 times
+;; Then copy rs1 for (32-rs2) times like in srli
 (define (mysra-safe rd rs1 rs2 mem-state)
- (~>> mem-state
-       (addi sp sp (intXLEN -32))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw t4 (intXLEN 16) sp)
-       (sw t5 (intXLEN 20) sp)
-       (sw rs1 (intXLEN 24) sp)
-       (sw rs2 (intXLEN 28) sp)
-       (lw t1 (intXLEN 28) sp)
-       (lw t0 (intXLEN 24) sp)
-       (lw t4 (intXLEN 24) sp)
-       (sub t2 x0 x0)
-       (sub t3 x0 x0)
-       (slli t4 t4 (intXLEN 1))
-       (srli t4 t4 (intXLEN 1))
-       (sub t5 t0 t4)
-       (lw t4 (intXLEN 24) sp)
-       (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t3 t3 (intXLEN 1))
-          (add t3 t3 t5)
-          (addi t2 t2 (intXLEN 1)))
-       (addi t2 x0 (intXLEN XLEN))
-       (sub t1 t2 t1)
-       (sub t2 x0 x0)
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t4 t4 (intXLEN 1))
-          (srli t4 t4 (intXLEN 1))
-          (slli t3 t3 (intXLEN 1))
-          (sub t5 t0 t4)
-          (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
-          (addi t2 t2 (intXLEN 1))
-          (slli t0 t0 (intXLEN 1))
-          (slli t4 t4 (intXLEN 1)))
-       (sw t3 (intXLEN 28) sp)
-       (lw t5 (intXLEN 20) sp)
-       (lw t4 (intXLEN 16) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 28) sp)
-       (addi sp sp (intXLEN 32))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+  (~>> mem-state
+     (addi sp sp (intXLEN -32))
+     (sw t0 (intXLEN 0) sp)				;; shifting rs1
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter
+     (sw t3 (intXLEN 12) sp)				;; will become rd
+     (sw t4 (intXLEN 16) sp)				;; MSB eliminated rs1
+     (sw t5 (intXLEN 20) sp)				;; MSB of rs1
+     (sw rs1 (intXLEN 24) sp)
+     (sw rs2 (intXLEN 28) sp)
+     (lw t1 (intXLEN 28) sp)				;; first loop bound is rs2
+     (lw t0 (intXLEN 24) sp)
+     (lw t4 (intXLEN 24) sp)
+     (sub t2 x0 x0)
+     (sub t3 x0 x0)
+     (slli t4 t4 (intXLEN 1))				;; extract MSB
+     (srli t4 t4 (intXLEN 1))
+     (sub t5 t0 t4)
+     (lw t4 (intXLEN 24) sp)
+     ;; if t5 == 0 then MSB = 0, else MSB = 1
+     (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
+     ;; first loop, copy MSB for rs2 times
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t3 t3 (intXLEN 1))			;; shift result
+        (add t3 t3 t5)
+        (addi t2 t2 (intXLEN 1)))
+     (addi t2 x0 (intXLEN XLEN))
+     (sub t1 t2 t1)					;; new loop bound is (32-rs2)
+     (sub t2 x0 x0)					;; reset loop counter
+     ;; second loop, copy bits of rs1
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t4 t4 (intXLEN 1))
+        (srli t4 t4 (intXLEN 1))
+        (slli t3 t3 (intXLEN 1))
+        (sub t5 t0 t4)
+        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
+        (addi t2 t2 (intXLEN 1))
+        (slli t0 t0 (intXLEN 1))			;; look at next bit
+        (slli t4 t4 (intXLEN 1)))
+     (sw t3 (intXLEN 28) sp)
+     (lw t5 (intXLEN 20) sp)
+     (lw t4 (intXLEN 16) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 28) sp)
+     (addi sp sp (intXLEN 32))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+;; Set rd to 1 if rs1 < rs2, 0 otherwise
 (define (myslt rd rs1 rs2 mem-state)
   (~>> mem-state
-       (~>>if-else _ (λ(mem) (bvslt (read-register rs1 mem) (read-register rs2 mem))) (addi rd x0 (intXLEN 1)) (sub rd x0 x0))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (~>>if-else _ (λ(mem) (bvslt (read-register rs1 mem) (read-register rs2 mem))) (addi rd x0 (intXLEN 1)) (sub rd x0 x0))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysltu rd rs1 rs2 mem-state)
- (~>> mem-state
-       (addi sp sp (intXLEN -20))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw rs1 (intXLEN 12) sp)
-       (sw rs2 (intXLEN 16) sp)
-       (lw t0 (intXLEN 12) sp)
-       (lw t1 (intXLEN 16) sp)
-       (srli t0 t0 (intXLEN 1))
-       (srli t1 t1 (intXLEN 1))
-       (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
-                (lw t0 (intXLEN 12) sp)
-                (lw  t1 (intXLEN 16) sp)
-                (slli t0 t0 (intXLEN 1))
-                (srli t0 t0 (intXLEN 1))
-                (slli t1 t1 (intXLEN 1))
-                (srli t1 t1 (intXLEN 1)))
-       (slt t2 t0 t1)
-       (sw t2 (intXLEN 16) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 16) sp)
-       (addi sp sp (intXLEN 20))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+  (~>> mem-state
+     (addi sp sp (intXLEN -20))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw t2 (intXLEN 8) sp)
+     (sw rs1 (intXLEN 12) sp)
+     (sw rs2 (intXLEN 16) sp)
+     (lw t0 (intXLEN 12) sp)
+     (lw t1 (intXLEN 16) sp)
+     (srli t0 t0 (intXLEN 1))				;; eliminate LSB
+     (srli t1 t1 (intXLEN 1))
+     ;; if upper 31 bits are equal, compare lower 31 bits
+     (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+        (lw t0 (intXLEN 12) sp)
+        (lw  t1 (intXLEN 16) sp)
+        (slli t0 t0 (intXLEN 1))			;; eliminate MSB
+        (srli t0 t0 (intXLEN 1))
+        (slli t1 t1 (intXLEN 1))
+        (srli t1 t1 (intXLEN 1)))
+     (slt t2 t0 t1)					;; compare with slt
+     (sw t2 (intXLEN 16) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 16) sp)
+     (addi sp sp (intXLEN 20))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 ;============== I-Type
 (define (myaddi rd rs1 imm mem-state)
@@ -774,333 +794,353 @@
 
 (define (myxori rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sub t1 x0 rs1)
-       (sub t1  x0  t1)					;; t1 = rs1
-       (addi t0  x0  imm)				;; t0 = imm
-       (rvxor rd  t1  t0)					;; call xor with rs1 and imm
-       (sw rd  (intXLEN 8) sp)
-       (lw t1  (intXLEN 4) sp)
-       (lw t0  (intXLEN 0) sp)
-       (lw rd  (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sub t1 x0 rs1)
+     (sub t1 x0 t1)					;; t1 = rs1
+     (addi t0 x0 imm)					;; t0 = imm
+     (rvxor rd t1 t0)					;; call xor with rs1 and imm
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (myori rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sub t1 x0 rs1)
-       (sub t1  x0  t1)
-       (addi t0  x0  imm)
-       (rvor rd  t1  t0)					;; call or with rs1 and imm
-       (sw rd  (intXLEN 8) sp)
-       (lw t1  (intXLEN 4) sp)
-       (lw t0  (intXLEN 0) sp)
-       (lw rd  (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sub t1 x0 rs1)
+     (sub t1 x0 t1)					;; t1 = rs1
+     (addi t0 x0 imm)					;; t0 = imm
+     (rvor rd t1 t0)					;; call or with rs1 and imm
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (myandi rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sub t1 x0 rs1)
-       (sub t1  x0  t1)
-       (addi t0  x0  imm)
-       (rvand rd  t1  t0)					;; call and with rs1 and imm
-       (sw rd  (intXLEN 8) sp)
-       (lw t1  (intXLEN 4) sp)
-       (lw t0  (intXLEN 0) sp)
-       (lw rd  (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sub t1 x0 rs1)
+     (sub t1 x0 t1)					;; t1 = rs1
+     (addi t0 x0 imm)					;; t0 = imm
+     (rvand rd t1 t0)					;; call and with rs1 and imm
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (myslli rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (lw t1 (intXLEN 8) sp)
-       (addi t0 x0 imm)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sll rd t1 t0))
-       (sw rd (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (lw t1 (intXLEN 8) sp)
+     (addi t0 x0 imm)
+     (andi t0 t0 (intXLEN 31))				;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sll rd t1 t0))
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+;; Shift left by 1 is the same as * 2
+;; The "safe" shift versions assume that the passed imm value is valid
 (define (myslli-safe rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -20))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw rs1 (intXLEN 16) sp)
-       (lw t3 (intXLEN 16) sp)
-       (sub t0 x0 t3)
-       (addi t1 x0 imm)
-       (sub t2 x0 x0)
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (sub t3 t3 t0)
-          (sub t0 x0 t3)
-          (addi t2 t2 (intXLEN 1)))
-       (sw t3 (intXLEN 16) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 16) sp)
-       (addi sp sp (intXLEN 20))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -20))
+     (sw t0 (intXLEN 0) sp)				;; shifting rs1
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter
+     (sw t3 (intXLEN 12) sp)				;; will become rd
+     (sw rs1 (intXLEN 16) sp)
+     (lw t3 (intXLEN 16) sp)				;; rd = rs1
+     (sub t0 x0 t3)					;; t0 = -rd
+     (addi t1 x0 imm)					;; loop bound = imm
+     (sub t2 x0 x0)
+     ;; loop, rd -(-rd) for imm times
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (sub t3 t3 t0)
+        (sub t0 x0 t3)
+        (addi t2 t2 (intXLEN 1)))			;; i++
+     (sw t3 (intXLEN 16) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 16) sp)
+     (addi sp sp (intXLEN 20))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysrli rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (lw t1 (intXLEN 8) sp)
-       (addi t0 x0 imm)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (srl rd t1 t0))
-       (sw rd (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (lw t1 (intXLEN 8) sp)
+     (addi t0 x0 imm)
+     (andi t0 t0 (intXLEN 31))				;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (srl rd t1 t0))
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+; Shift right by 1 is the same as a circular shift left by 31 (32-1)
 (define (mysrli-safe rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -28))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw t4 (intXLEN 16) sp)
-       (sw t5 (intXLEN 20) sp)
-       (sw rs1 (intXLEN 24) sp)
-       (addi t2 x0 imm)
-       (addi t1 x0 (intXLEN XLEN))
-       (sub t1 t1 t2)
-       (sub t2 x0 x0)
-       (lw t0 (intXLEN 24) sp)
-       (sub t3 x0 x0)
-       (lw t4 (intXLEN 24) sp)
-       (slli t4 t4 (intXLEN 1))
-       (srli t4 t4 (intXLEN 1))
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t4 t4 (intXLEN 1))
-          (srli t4 t4 (intXLEN 1))
-          (slli t3 t3 (intXLEN 1))
-          (sub t5 t0 t4)
-          (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
-          (addi t2 t2 (intXLEN 1))
-          (slli t0 t0 (intXLEN 1))
-          (slli t4 t4 (intXLEN 1)))
-       (sw t3 (intXLEN 24) sp)
-       (lw t5 (intXLEN 20) sp)
-       (lw t4 (intXLEN 16) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 24) sp)
-       (addi sp sp (intXLEN 28))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -28))
+     (sw t0 (intXLEN 0) sp)				;; shifting rs1
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter
+     (sw t3 (intXLEN 12) sp)				;; will become rd
+     (sw t4 (intXLEN 16) sp)				;; MSB eliminated rs1
+     (sw t5 (intXLEN 20) sp)				;; MSB of rs1
+     (sw rs1 (intXLEN 24) sp)
+     (addi t2 x0 imm)
+     (addi t1 x0 (intXLEN XLEN))
+     (sub t1 t1 t2)					;; loop bound = 32 - imm
+     (sub t2 x0 x0)
+     (lw t0 (intXLEN 24) sp)
+     (sub t3 x0 x0)
+     (lw t4 (intXLEN 24) sp)
+     ;; for (32-imm) times add the MSB of rs1 to rd
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t4 t4 (intXLEN 1))			;; eliminate MSB
+        (srli t4 t4 (intXLEN 1))
+        (slli t3 t3 (intXLEN 1))			;; shift result
+        (sub t5 t0 t4)
+        ;; if t5 == 0 then MSB = 0, else MSB = 1
+        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
+        (addi t2 t2 (intXLEN 1))			;; i++
+        (slli t0 t0 (intXLEN 1))			;; look at next bit
+        (slli t4 t4 (intXLEN 1)))
+     (sw t3 (intXLEN 24) sp)
+     (lw t5 (intXLEN 20) sp)
+     (lw t4 (intXLEN 16) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 24) sp)
+     (addi sp sp (intXLEN 28))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysrai rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (lw t1 (intXLEN 8) sp)
-       (addi t0 x0 imm)
-       (andi t0 t0 (intXLEN 31))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sra rd t1 t0))
-       (sw rd (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (lw t1 (intXLEN 8) sp)
+     (addi t0 x0 imm)
+     (andi t0 t0 (intXLEN 31))			;; extract lowest 5 bits as shift amount
+     ;; if shift amount == 0 then just return rs1 as result
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (intXLEN 0))) (add rd x0 t1) (sra rd t1 t0))
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
+;; For arithmetic shift, first copy the MSB for imm times
+;; Then copy rs1 for (32-imm) times like in srli
 (define (mysrai-safe rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -28))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw t3 (intXLEN 12) sp)
-       (sw t4 (intXLEN 16) sp)
-       (sw t5 (intXLEN 20) sp)
-       (sw rs1 (intXLEN 24) sp)
-       (addi t1 x0 imm)
-       (lw t0 (intXLEN 24) sp)
-       (lw t4 (intXLEN 24) sp)
-       (sub t2 x0 x0)
-       (sub t3 x0 x0)
-       (slli t4 t4 (intXLEN 1))
-       (srli t4 t4 (intXLEN 1))
-       (sub t5 t0 t4)
-       (lw t4 (intXLEN 24) sp)
-       (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t3 t3 (intXLEN 1))
-          (add t3 t3 t5)
-          (addi t2 t2 (intXLEN 1)))
-       (addi t2 x0 (intXLEN XLEN))
-       (sub t1 t2 t1)
-       (sub t2 x0 x0)
-       (~>>for-break _ LOOP-LIM
-          (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-          #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-          (slli t4 t4 (intXLEN 1))
-          (srli t4 t4 (intXLEN 1))
-          (slli t3 t3 (intXLEN 1))
-          (sub t5 t0 t4)
-          (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
-          (addi t2 t2 (intXLEN 1))
-          (slli t0 t0 (intXLEN 1))
-          (slli t4 t4 (intXLEN 1)))
-       (sw t3 (intXLEN 24) sp)
-       (lw t5 (intXLEN 20) sp)
-       (lw t4 (intXLEN 16) sp)
-       (lw t3 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 24) sp)
-       (addi sp sp (intXLEN 28))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -28))
+     (sw t0 (intXLEN 0) sp)				;; shifting rs1
+     (sw t1 (intXLEN 4) sp)				;; loop bound
+     (sw t2 (intXLEN 8) sp)				;; loop counter
+     (sw t3 (intXLEN 12) sp)				;; will become rd
+     (sw t4 (intXLEN 16) sp)				;; MSB eliminated rs1
+     (sw t5 (intXLEN 20) sp)				;; MSB of rs1
+     (sw rs1 (intXLEN 24) sp)
+     (addi t1 x0 imm)					;; first loop bound = imm
+     (lw t0 (intXLEN 24) sp)
+     (lw t4 (intXLEN 24) sp)
+     (sub t2 x0 x0)
+     (sub t3 x0 x0)
+     (slli t4 t4 (intXLEN 1))				;; eliminate MSB
+     (srli t4 t4 (intXLEN 1))
+     (sub t5 t0 t4)
+     (lw t4 (intXLEN 24) sp)
+     ;; if t5 == 0 then MSB = 0, else MSB = 1
+     (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t5 x0 (intXLEN 1)))
+     ;; first loop, add MSB to result for imm times
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t3 t3 (intXLEN 1))
+        (add t3 t3 t5)
+        (addi t2 t2 (intXLEN 1)))
+     (addi t2 x0 (intXLEN XLEN))
+     (sub t1 t2 t1)					;; second loop bound = (32 - imm)
+     (sub t2 x0 x0)					;; reset loop variable
+     ;; second loop, copy MSB of rs1
+     (~>>for-break _ LOOP-LIM
+        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
+        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
+        (slli t4 t4 (intXLEN 1))			;; eliminate MSB
+        (srli t4 t4 (intXLEN 1))
+        (slli t3 t3 (intXLEN 1))			;; shift result
+        (sub t5 t0 t4)
+        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (addi t3 t3 (intXLEN 1)))
+        (addi t2 t2 (intXLEN 1))
+        (slli t0 t0 (intXLEN 1))			;; look at next bit
+        (slli t4 t4 (intXLEN 1)))
+     (sw t3 (intXLEN 24) sp)
+     (lw t5 (intXLEN 20) sp)
+     (lw t4 (intXLEN 16) sp)
+     (lw t3 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 24) sp)
+     (addi sp sp (intXLEN 28))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (myslti rd rs1 imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (lw t1 (intXLEN 8) sp)
-       (addi t0 x0 imm)
-       (slt rd t1 t0)
-       (sw rd (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (lw t1 (intXLEN 8) sp)				;; t1 = rs1
+     (addi t0 x0 imm)					;; t0 = imm
+     (slt rd t1 t0)					;; compare with slt
+     (sw rd (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 (define (mysltiu rd rs1 imm mem-state)
- (~>> mem-state
-       (addi sp sp (intXLEN -16))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw t2 (intXLEN 8) sp)
-       (sw rs1 (intXLEN 12) sp)
-       (lw t0 (intXLEN 12) sp)
-       (addi t1 x0 imm)
-       (srli t0 t0 (intXLEN 1))
-       (srli t1 t1 (intXLEN 1))
-       (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
-           (lw t0 (intXLEN 12) sp)
-           (addi t1 x0 imm)
-           (slli t0 t0 (intXLEN 1))
-           (srli t0 t0 (intXLEN 1))
-           (slli t1 t1 (intXLEN 1))
-           (srli t1 t1 (intXLEN 1)))
-       (slt t2 t0 t1)
-       (sw t2 (intXLEN 12) sp)
-       (lw t2 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 12) sp)
-       (addi sp sp (intXLEN 16))
-       (set-pc (cpu-pc mem-state))
-       (increment-pc)))
+  (~>> mem-state
+     (addi sp sp (intXLEN -16))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw t2 (intXLEN 8) sp)
+     (sw rs1 (intXLEN 12) sp)
+     (lw t0 (intXLEN 12) sp)				;; t0 = rs1
+     (addi t1 x0 imm)					;; t1 = imm
+     (srli t0 t0 (intXLEN 1))			;; eliminate LSB
+     (srli t1 t1 (intXLEN 1))
+     ;; if upper 31 bits are the same
+     (~>>when _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+        (lw t0 (intXLEN 12) sp)
+        (addi t1 x0 imm)
+        (slli t0 t0 (intXLEN 1))			;; eliminate MSB
+        (srli t0 t0 (intXLEN 1))
+        (slli t1 t1 (intXLEN 1))
+        (srli t1 t1 (intXLEN 1)))
+     (slt t2 t0 t1)					;; compare with slt
+     (sw t2 (intXLEN 12) sp)
+     (lw t2 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 12) sp)
+     (addi sp sp (intXLEN 16))
+     (set-pc (cpu-pc mem-state))
+     (increment-pc)))
 
 ;============== Jumps and Branching
+; If rs1 == rs2 go to next instruction, else jump to offset
 (define (mybne rs1 rs2 imm mem-state)
   (if (bveq (read-register rs1 mem-state) (read-register rs2 mem-state))
       (increment-pc mem-state)
       (beq x0 x0 imm mem-state)))
 
+; If rs1 < rs2 go to next instruction, else jump to offset
 (define (mybge rs1 rs2 imm mem-state)
   (if (bvslt (read-register rs1 mem-state) (read-register rs2 mem-state))
       (increment-pc mem-state)
       (beq x0 x0 imm mem-state)))
 
 (define (mybltu rs1 rs2 imm mem-state)
- (~>> mem-state
-       (addi sp sp (intXLEN -16))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (sw rs1 (intXLEN 8) sp)
-       (sw rs2 (intXLEN 12) sp)
-       (lw t0 (intXLEN 8) sp)
-       (lw t1 (intXLEN 12) sp)
-       (srli t0 t0 (intXLEN 1))
-       (srli t1 t1 (intXLEN 1))
-       (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
-           (~>> _
-                (lw t0 (intXLEN 8) sp)
-                (lw t1 (intXLEN 12) sp)
-                (slli t0 t0 (intXLEN 1))
-                (srli t0 t0 (intXLEN 1))
-                (slli t1 t1 (intXLEN 1))
-                (srli t1 t1 (intXLEN 1))
-                (~>>if-else _ (λ(mem) (bvslt (read-register t0 mem) (read-register t1 mem)))
-                    (~>>  _
-                        (lw t1 (intXLEN 4) sp)
-                         (lw t0 (intXLEN 0) sp)
-                         (addi sp sp (intXLEN 16))
-                         (set-pc (cpu-pc mem-state))
-                         (beq x0 x0 imm))
-                    (~>> _
-                         (lw t1 (intXLEN 4) sp)
-                         (lw t0 (intXLEN 0) sp)
-                         (addi sp sp (intXLEN 16))
-                         (set-pc (cpu-pc mem-state))
-                         (increment-pc))))
+  (~>> mem-state
+     (addi sp sp (intXLEN -16))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (sw rs1 (intXLEN 8) sp)
+     (sw rs2 (intXLEN 12) sp)
+     (lw t0 (intXLEN 8) sp)				;; t0 = rs1
+     (lw t1 (intXLEN 12) sp)				;; t1 = rs2
+     (srli t0 t0 (intXLEN 1))				;; eliminate LSB
+     (srli t1 t1 (intXLEN 1))
+     ;; compare upper 31 bits
+     (~>>if-else _ (λ(mem) (bveq (read-register t0 mem) (read-register t1 mem)))
+        ;; if they are equal, compare lower 31 bits
+        (~>> _
+           (lw t0 (intXLEN 8) sp)
+           (lw t1 (intXLEN 12) sp)
+           (slli t0 t0 (intXLEN 1))			;; eliminate MSB
+           (srli t0 t0 (intXLEN 1))
+           (slli t1 t1 (intXLEN 1))
+           (srli t1 t1 (intXLEN 1))
+           ;; compare lower 31 bits, if rs1 < rs2 jump to offset, else go to next instruction
            (~>>if-else _ (λ(mem) (bvslt (read-register t0 mem) (read-register t1 mem)))
-               (~>> _
-                    (lw t1 (intXLEN 4) sp)
-                    (lw t0 (intXLEN 0) sp)
-                    (addi sp sp (intXLEN 16))
-                    (set-pc (cpu-pc mem-state))
-                    (beq x0 x0 imm))
-               (~>>  _
-                     (lw t1 (intXLEN 4) sp)
-                     (lw t0 (intXLEN 0) sp)
-                     (addi sp sp (intXLEN 16))
-                     (set-pc (cpu-pc mem-state))
-                     (increment-pc))))))
+              (~>>  _
+                 (lw t1 (intXLEN 4) sp)
+                 (lw t0 (intXLEN 0) sp)
+                 (addi sp sp (intXLEN 16))
+                 (set-pc (cpu-pc mem-state))
+                 (beq x0 x0 imm))
+              (~>> _
+                 (lw t1 (intXLEN 4) sp)
+                 (lw t0 (intXLEN 0) sp)
+                 (addi sp sp (intXLEN 16))
+                 (set-pc (cpu-pc mem-state))
+                 (increment-pc))))
+        ;; else just compare upper 31 bits, jump to offset if rs1 < rs2
+        (~>>if-else _ (λ(mem) (bvslt (read-register t0 mem) (read-register t1 mem)))
+           (~>> _
+              (lw t1 (intXLEN 4) sp)
+              (lw t0 (intXLEN 0) sp)
+              (addi sp sp (intXLEN 16))
+              (set-pc (cpu-pc mem-state))
+              (beq x0 x0 imm))
+           (~>>  _
+              (lw t1 (intXLEN 4) sp)
+              (lw t0 (intXLEN 0) sp)
+              (addi sp sp (intXLEN 16))
+              (set-pc (cpu-pc mem-state))
+              (increment-pc))))))
 
+; If rs1 < rs2 go to next instruction, else jump to offset
 (define (mybgeu rs1 rs2 imm mem-state)
   (if (bvult (read-register rs1 mem-state) (read-register rs2 mem-state))
       (increment-pc mem-state)
@@ -1108,24 +1148,24 @@
 
 (define (myjal rd imm mem-state)
   (~>> mem-state
-       (addi sp sp (intXLEN -12))
-       (sw t0 (intXLEN 0) sp)
-       (sw t1 (intXLEN 4) sp)
-       (set-pc (cpu-pc mem-state))
-       (auipc t1 (intXLEN 0))
-       (addi t0 x0 (intXLEN 4))
-       (sub t0 x0 t0)
-       (sub t1 t1 t0)
-       (sw t1 (intXLEN 8) sp)
-       (lw t1 (intXLEN 4) sp)
-       (lw t0 (intXLEN 0) sp)
-       (lw rd (intXLEN 8) sp)
-       (addi sp sp (intXLEN 12))
-       (set-pc (cpu-pc mem-state))
-       (beq x0 x0 imm)))
+     (addi sp sp (intXLEN -12))
+     (sw t0 (intXLEN 0) sp)
+     (sw t1 (intXLEN 4) sp)
+     (set-pc (cpu-pc mem-state))			;; reset pc as it was modified
+     (auipc t1 (intXLEN 0))				;; t1 = pc
+     (addi t0 x0 (intXLEN 4))
+     (sub t0 x0 t0)					;; t0 = -4
+     (sub t1 t1 t0)					;; pc + 4
+     (sw t1 (intXLEN 8) sp)
+     (lw t1 (intXLEN 4) sp)
+     (lw t0 (intXLEN 0) sp)
+     (lw rd (intXLEN 8) sp)
+     (addi sp sp (intXLEN 12))
+     (set-pc (cpu-pc mem-state))
+     (beq x0 x0 imm)))
 
-;========================= Main Functions
-
+;========================= Main Instructions
+; Matches op-code to respective instructions
 (define (execute-instruction instruction mem-state)
   (match instruction
     ; RISC-V Instructions
@@ -1185,6 +1225,7 @@
     [(op-mybgeu rs1 rs2 imm) (mybgeu rs1 rs2 imm mem-state)]
     [(op-myjal rd imm) (myjal rd imm mem-state)]))
 
+; Fetches current instruction from the program list and executes it, runs until last intruction reached or out of fuel
 (define-bounded (execute-program instructions mem-state)
   (let ([pc (cpu-pc mem-state)] [len (length-bv instructions (bitvector XLEN))])
     (cond
@@ -1192,6 +1233,7 @@
        (execute-program instructions (execute-instruction (list-ref-bv instructions (bvlshr pc (intXLEN 2))) mem-state))]
       [else mem-state])))
 
+; Compares if two memory states are equivalent (PC, Register values, Stack values)
 (define (eq-mem-state memory1 memory2)
   (and
    (equal? (cpu-pc memory1) (cpu-pc memory2))

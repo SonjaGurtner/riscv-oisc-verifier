@@ -96,7 +96,7 @@
 ; #:type To define if the instructions need registers or immediate values as parameters
 ; #:assumptions Assumptions about the input to define valid inputs
 ; Main macro which is responsible for the verification, evaluating found counter-examples, and timing information (which is also written to a separate file)
-; In case that SMT solver found a model which is partial, it will be extended to a full model (cex)
+; In case that the SMT solver found a model which is partial, it will be extended to a full model (cex)
 (define-syntax-rule (verify-eq #:name name #:func1 func1 #:func2 func2 #:space-on-stack space #:type type #:assumptions assumptions)
   (let ([my-file (open-output-file #:exists 'append #:mode 'text (format "/home/sonja/GitHub/riscv-oisc-verifier/benchmarks/~a.dat" name))])
     (displayln (format "Verifying equality of ~a: ~a and ~a" name func1 func2))
@@ -107,18 +107,18 @@
         (displayln (format "PASSED in ~a ms" real-milli))
         (let
             ([cex (complete-solution (first m)
-                       (list rs1 rs2 rd
-                                test-r1 test-r2 test-r3 test-r4 test-r5 test-r6 test-r7 test-r8 test-r9 test-r10 test-r11 test-r12 test-r13 test-r14 test-r15 test-r16 test-r17 test-r18 test-r19 test-r20 test-r21 test-r22 test-r23 test-r24 test-r25 test-r26 test-r27 test-r28 test-r29 test-r30 test-r31
-                                test-mem0 test-mem1 test-mem2 test-mem3 test-mem4 test-mem5 test-mem6 test-mem7 test-mem8 test-mem9 test-mem10 test-mem11 test-mem12 test-mem13 test-mem14 test-mem15 test-mem16 test-mem17 test-mem18 test-mem19 test-mem20 test-mem21 test-mem22 test-mem23 test-mem24 test-mem25 test-mem26 test-mem27 test-mem28 test-mem29 test-mem30 test-mem31
-                                test2-r1 test2-r2 test2-r3 test2-r4 test2-r5 test2-r6 test2-r7 test2-r8 test2-r9 test2-r10 test2-r11 test2-r12 test2-r13 test2-r14 test2-r15 test2-r16 test2-r17 test2-r18 test2-r19 test2-r20 test2-r21 test2-r22 test2-r23 test2-r24 test2-r25 test2-r26 test2-r27 test2-r28 test2-r29 test2-r30 test2-r31
-                                test2-mem0 test2-mem1 test2-mem2 test2-mem3 test2-mem4 test2-mem5 test2-mem6 test2-mem7 test2-mem8 test2-mem9 test2-mem10 test2-mem11 test2-mem12 test2-mem13 test2-mem14 test2-mem15 test2-mem16 test2-mem17 test2-mem18 test2-mem19 test2-mem20 test2-mem21 test2-mem22 test2-mem23 test2-mem24 test2-mem25 test2-mem26 test2-mem27 test2-mem28 test2-mem29 test2-mem30 test2-mem31))])
+                  (list rs1 rs2 rd
+                        test-r1 test-r2 test-r3 test-r4 test-r5 test-r6 test-r7 test-r8 test-r9 test-r10 test-r11 test-r12 test-r13 test-r14 test-r15 test-r16 test-r17 test-r18 test-r19 test-r20 test-r21 test-r22 test-r23 test-r24 test-r25 test-r26 test-r27 test-r28 test-r29 test-r30 test-r31
+                        test-mem0 test-mem1 test-mem2 test-mem3 test-mem4 test-mem5 test-mem6 test-mem7 test-mem8 test-mem9 test-mem10 test-mem11 test-mem12 test-mem13 test-mem14 test-mem15 test-mem16 test-mem17 test-mem18 test-mem19 test-mem20 test-mem21 test-mem22 test-mem23 test-mem24 test-mem25 test-mem26 test-mem27 test-mem28 test-mem29 test-mem30 test-mem31
+                        test2-r1 test2-r2 test2-r3 test2-r4 test2-r5 test2-r6 test2-r7 test2-r8 test2-r9 test2-r10 test2-r11 test2-r12 test2-r13 test2-r14 test2-r15 test2-r16 test2-r17 test2-r18 test2-r19 test2-r20 test2-r21 test2-r22 test2-r23 test2-r24 test2-r25 test2-r26 test2-r27 test2-r28 test2-r29 test2-r30 test2-r31
+                        test2-mem0 test2-mem1 test2-mem2 test2-mem3 test2-mem4 test2-mem5 test2-mem6 test2-mem7 test2-mem8 test2-mem9 test2-mem10 test2-mem11 test2-mem12 test2-mem13 test2-mem14 test2-mem15 test2-mem16 test2-mem17 test2-mem18 test2-mem19 test2-mem20 test2-mem21 test2-mem22 test2-mem23 test2-mem24 test2-mem25 test2-mem26 test2-mem27 test2-mem28 test2-mem29 test2-mem30 test2-mem31))])
             (displayln (format "Failed in ~a ms: ~a\n" real-milli (first m)))
           (displayln (format "Arguments ~a" (evaluate (list (bitvector->integer rd) (bitvector->integer rs1) (bitvector->integer (if (eq? type 'r) rs2 imm))) cex)))
           (displayln "Memory before Execution")
           (print-all-memory (evaluate test1-mem cex))
           (let
               ([mem1-after (evaluate (if (eq? type 'r)(func1 rd rs1 rs2 test1-mem) (if (eq? type 'i) (func1 rd rs1 imm test1-mem) (func1 rd imm test1-mem))) cex)]
-                [mem2-after (evaluate (if (eq? type 'r) (func2 rd rs1 rs2 test2-mem) (if (eq? type 'i) (func2 rd rs1 imm test2-mem) (func2 rd imm test2-mem))) cex)])
+               [mem2-after (evaluate (if (eq? type 'r) (func2 rd rs1 rs2 test2-mem) (if (eq? type 'i) (func2 rd rs1 imm test2-mem) (func2 rd imm test2-mem))) cex)])
               (displayln (format "\nMemory after Execution of ~a and ~a:" func1 func2))
             (print-all-memory-many (evaluate mem1-after cex) (evaluate mem2-after cex))
             (close-output-port my-file))))))
@@ -187,7 +187,7 @@
  #:func2 mysrl-safe
  #:space-on-stack (intXLEN 8)
  #:type 'r
- #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)))))
+ #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)) (bvsle (read-register rs2 mem) (intXLEN XLEN)))))
 
 (verify-eq
  #:name "SRL"
@@ -261,7 +261,7 @@
  #:func2 myandi
  #:space-on-stack (intXLEN 3)
  #:type 'i
-#:assumptions (λ(mem) #t))
+ #:assumptions (λ(mem) #t))
 
 (verify-eq
  #:name "SLLI-SAFE"
