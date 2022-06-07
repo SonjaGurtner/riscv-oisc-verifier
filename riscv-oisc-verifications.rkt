@@ -102,10 +102,10 @@
     (displayln (format "Verifying equality of ~a: ~a and ~a" name func1 func2))
     (define-values (m milli real-milli cpu-time)
       (time-apply (λ () (begin (assume (assumptions test1-mem)) (if (eq? type 'r) (verify-func-r func1 func2 space) (if (eq? type 'i) (verify-func-i func1 func2 space) (verify-func-j func1 func2 space))))) '()))
-    (fprintf my-file "(~a, ~a)\n" XLEN real-milli)
-    (close-output-port my-file)
     (if (eq? (unsat) (first m))
-        (displayln (format "PASSED in ~a ms" real-milli))
+        (begin
+          (displayln (format "PASSED in ~a ms" real-milli))
+          (fprintf my-file "(~a, ~a)\n" XLEN real-milli))
         (let
             ([cex (complete-solution (first m)
                   (list rs1 rs2 rd
@@ -121,7 +121,8 @@
               ([mem1-after (evaluate (if (eq? type 'r)(func1 rd rs1 rs2 test1-mem) (if (eq? type 'i) (func1 rd rs1 imm test1-mem) (func1 rd imm test1-mem))) cex)]
                [mem2-after (evaluate (if (eq? type 'r) (func2 rd rs1 rs2 test2-mem) (if (eq? type 'i) (func2 rd rs1 imm test2-mem) (func2 rd imm test2-mem))) cex)])
               (displayln (format "\nMemory after Execution of ~a and ~a:" func1 func2))
-            (print-all-memory-many (evaluate mem1-after cex) (evaluate mem2-after cex)))))))
+            (print-all-memory-many (evaluate mem1-after cex) (evaluate mem2-after cex)))))
+    (close-output-port my-file)))
 
 ; Compare different solvers
 (require rosette/solver/smt/boolector)
