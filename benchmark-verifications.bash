@@ -2,11 +2,15 @@
 
 FILE=riscv-oisc-verifications.rkt
 INTERPRETER=riscv-oisc-interpreter.rkt
-BENCHMARKDIR=/home/sonja/riscv-oisc-verifier/benchmarks
+# output directory for .dat files
+BENCHMARKDIR=/home/sonja/Documents/benchmarks
+# paths to the solvers
 CVC5=/home/sonja/GitHub/cvc5/build/bin/cvc5
 CVC4=/home/sonja/GitHub/cvc4/build/bin/cvc4
 BITWUZLA=/home/sonja/GitHub/bitwuzla/build/bin/bitwuzla
 BOOLECTOR=/home/sonja/GitHub/boolector-3.2.2/build/bin/boolector
+# replace output directory with specified path
+sed -i "s|/home/sonja/GitHub/riscv-oisc-verifier/|${BENCHMARKDIR}/|g" ${FILE}
 
 for solver in cvc4-kissat cvc4-cadical cvc4-cryptominisat \
 			   boolector-cadical boolector-lingeling boolector-cryptominisat \
