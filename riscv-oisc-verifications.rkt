@@ -123,11 +123,10 @@
             (print-all-memory-many (evaluate mem1-after cex) (evaluate mem2-after cex))
             (close-output-port my-file))))))
 
-; Compare different solvers, Z3, Boolector and Bitwuzla
+; Compare different solvers
 (require rosette/solver/smt/boolector)
 (require rosette/solver/smt/z3)
-;(current-solver (boolector #:path "/home/sonja/GitHub/boolector-3.2.2/build/bin/boolector"))
-;(current-solver (boolector #:path "/home/sonja/GitHub/bitwuzla/build/bin/bitwuzla"))
+(require rosette/solver/smt/cvc4)
 (current-solver (z3))
 
 (display (format "===== Verify equality of Instructions (bit length: ~a)\n" XLEN))
