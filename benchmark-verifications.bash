@@ -15,7 +15,7 @@ sed -i "s|/home/sonja/GitHub/riscv-oisc-verifier/benchmarks/|${BENCHMARKDIR}|g" 
 for solver in cvc4-kissat cvc4-cadical cvc4-cryptominisat \
 			   boolector-cadical boolector-lingeling boolector-cryptominisat \
 			   z3 \
-			   cvc5-cadical cvc5-kissat cvc5-cryptominisat \
+			   cvc5-cadical cvc5-cryptominisat \
 			   bitwuzla-lingeling bitwuzla-cadical bitwuzla-kissat bitwuzla-cryptominisat
 do
     echo "******************************************************************************************"
@@ -32,11 +32,6 @@ do
     if [ ${solver} == "cvc5-cadical" ];
     then
         sed -i "s|(current-solver (.*))$|(current-solver (cvc4 #:logic \"QF_BV\" #:path \"${CVC5}\" #:options (hash ':bitblast 'eager ':bv-sat-solver 'cadical)))|g" ${FILE}
-    fi;
-
-    if [ ${solver} == "cvc5-kissat" ];
-    then
-        sed -i "s|(current-solver (.*))$|(current-solver (cvc4 #:logic \"QF_BV\" #:path \"${CVC5}\" #:options (hash ':bitblast 'eager ':bv-sat-solver 'kissat)))|g" ${FILE}
     fi;
 
     if [ ${solver} == "cvc5-cryptominisat" ];

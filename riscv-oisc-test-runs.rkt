@@ -5,7 +5,7 @@
 ; This file contains  test programs and starting memory (registers, stack)
 
 ; Initial memory, can be extended if more space needed
-(define test-cpu (cpu (intXLEN 0) (build-list 32(λ(x) (intXLEN 0))) (build-list 32 (λ(x) (intXLEN 0)))))
+(define test-cpu (cpu (intXLEN 0) (build-list 32 (λ(x) (intXLEN 0))) (build-list 32 (λ(x) (intXLEN 0)))))
 
 ; Test Programs are defined as a list of instructions, which use the respective op-codes
 ; Test-Program 1
