@@ -1198,9 +1198,9 @@
                   (λ(i mem) (eq? (intXLEN i) (read-register t1 mem)))
                   (myslli-safe-nested s1 s1 (intXLEN 1))
                   (myslli-safe-nested t5 t3 (intXLEN 1))		;; eliminate MSB
-                  (mysrli-safe-nested t5 t5 (intXLEN 1))
+                  (srli t5 t5 (intXLEN 1))
                   (myslli-safe-nested t6 t4 (intXLEN 1))
-                  (mysrli-safe-nested t6 t6 (intXLEN 1))
+                  (srli t6 t6 (intXLEN 1))
                   (sub t5 t3 t5)
                   ;; if t5 == 0 then MSB = 0, else MSB = 1
                   (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (myaddi t5 x0 (intXLEN 1)))
@@ -1289,48 +1289,6 @@
      (lw t0 (intXLEN 0) sp)
      (lw rd (intXLEN 16) sp)
      (addi sp sp (intXLEN 20))
-     (set-pc (cpu-pc mem-state))
-     (increment-pc)))
-
-(define (mysrli-safe-nested rd rs1 imm mem-state)
-  (~>> mem-state
-     (addi sp sp (intXLEN -28))
-     (sw t0 (intXLEN 0) sp)				;; shifting rs1
-     (sw t1 (intXLEN 4) sp)				;; loop bound
-     (sw t2 (intXLEN 8) sp)				;; loop counter
-     (sw t3 (intXLEN 12) sp)				;; will become rd
-     (sw t4 (intXLEN 16) sp)				;; MSB eliminated rs1
-     (sw t5 (intXLEN 20) sp)				;; MSB of rs1
-     (sw rs1 (intXLEN 24) sp)
-     (myaddi t2 x0 imm)
-     (myaddi t1 x0 (intXLEN XLEN))
-     (sub t1 t1 t2)					;; loop bound = 32 - imm
-     (sub t2 x0 x0)
-     (lw t0 (intXLEN 24) sp)
-     (sub t3 x0 x0)
-     (lw t4 (intXLEN 24) sp)
-     ;; for (32-imm) times add the MSB of rs1 to rd
-     (~>>for-break _ LOOP-LIM
-        (λ(i mem) (eq? (intXLEN i) (read-register t2 mem)))
-        #:break (λ(i mem) (bveq (intXLEN i) (read-register t1 mem)))
-        (myslli-safe-nested t4 t4 (intXLEN 1))			;; eliminate MSB
-        (srli t4 t4 (intXLEN 1))
-        (myslli-safe-nested t3 t3 (intXLEN 1))			;; shift result
-        (sub t5 t0 t4)
-        ;; if t5 == 0 then MSB = 0, else MSB = 1
-        (~>>when _ (λ(mem) (not (bveq (read-register t5 mem) (intXLEN 0)))) (myaddi t3 t3 (intXLEN 1)))
-        (myaddi t2 t2 (intXLEN 1))			;; i++
-        (myslli-safe-nested t0 t0 (intXLEN 1))			;; look at next bit
-        (myslli-safe-nested t4 t4 (intXLEN 1)))
-     (sw t3 (intXLEN 24) sp)
-     (lw t5 (intXLEN 20) sp)
-     (lw t4 (intXLEN 16) sp)
-     (lw t3 (intXLEN 12) sp)
-     (lw t2 (intXLEN 8) sp)
-     (lw t1 (intXLEN 4) sp)
-     (lw t0 (intXLEN 0) sp)
-     (lw rd (intXLEN 24) sp)
-     (addi sp sp (intXLEN 28))
      (set-pc (cpu-pc mem-state))
      (increment-pc)))
 

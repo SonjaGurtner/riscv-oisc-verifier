@@ -373,7 +373,7 @@
 (displayln "\nVerification of Nested Instructions")
 
 (verify-eq
- #:name "AND"
+ #:name "AND-NESTED"
  #:func1 rvand
  #:func2 myand-nested
  #:space-on-stack (intXLEN 26)
@@ -381,7 +381,7 @@
  #:assumptions (λ(mem) #t))
 
 (verify-eq
- #:name "SLL"
+ #:name "SLL-NESTED"
  #:func1 sll
  #:func2 mysll-nested
  #:space-on-stack (intXLEN 33)
