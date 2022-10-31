@@ -172,7 +172,7 @@
  #:func2 mysll-safe
  #:space-on-stack (intXLEN 6)
  #:type 'r
- #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)))))
+ #:assumptions (λ(mem) (and (bvsge (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)))))
 
 (verify-eq
  #:name "SLL"
@@ -188,7 +188,7 @@
  #:func2 mysrl-safe
  #:space-on-stack (intXLEN 8)
  #:type 'r
- #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)) (bvsle (read-register rs2 mem) (intXLEN XLEN)))))
+ #:assumptions (λ(mem) (and (bvsge (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)) (bvsle (read-register rs2 mem) (intXLEN XLEN)))))
 
 (verify-eq
  #:name "SRL"
@@ -204,7 +204,7 @@
  #:func2 mysra-safe
  #:space-on-stack (intXLEN 8)
  #:type 'r
- #:assumptions (λ(mem) (and (bvsgt (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)) (bvsle (read-register rs2 mem) (intXLEN XLEN)))))
+ #:assumptions (λ(mem) (and (bvsge (read-register rs2 mem) (intXLEN 0)) (bvsle (read-register rs2 mem) (intXLEN 31)) (bvsle (read-register rs2 mem) (intXLEN XLEN)))))
 
 (verify-eq
  #:name "SRA"
@@ -270,7 +270,7 @@
  #:func2 myslli-safe
  #:space-on-stack (intXLEN 5)
  #:type 'i
- #:assumptions (λ(mem) (and (bvsgt imm (intXLEN 0)) (bvsle imm (intXLEN 31)))))
+ #:assumptions (λ(mem) (and (bvsge imm (intXLEN 0)) (bvsle imm (intXLEN 31)))))
 
 (verify-eq
  #:name "SLLI"
@@ -286,7 +286,7 @@
  #:func2 mysrli-safe
  #:space-on-stack (intXLEN 7)
  #:type 'i
- #:assumptions (λ(mem) (and (bvsgt imm (intXLEN 0)) (bvsle imm (intXLEN 31)) (bvsle imm (intXLEN XLEN)))))
+ #:assumptions (λ(mem) (and (bvsge imm (intXLEN 0)) (bvsle imm (intXLEN 31)) (bvsle imm (intXLEN XLEN)))))
 
 (verify-eq
  #:name "SRLI"
@@ -302,7 +302,7 @@
  #:func2 mysrai-safe
  #:space-on-stack (intXLEN 7)
  #:type 'i
- #:assumptions (λ(mem) (and (bvsgt imm (intXLEN 0)) (bvsle imm (intXLEN 31)) (bvsle imm (intXLEN XLEN)))))
+ #:assumptions (λ(mem) (and (bvsge imm (intXLEN 0)) (bvsle imm (intXLEN 31)) (bvsle imm (intXLEN XLEN)))))
 
 (verify-eq
  #:name "SRAI"
