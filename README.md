@@ -1,4 +1,5 @@
 # A Formally Verified Reduction of the RV32I ISA
+## Interpreter in Rosette
 
 This is the second part of my Master Thesis at the Institute for Complex Systems @JKU Linz ([ICS](https://www.ics.jku.at/), [GitHub](https://github.com/ics-jku)).
 
